@@ -25,6 +25,11 @@ let currentFilter = "all";
 let currentSearch = "";
 let cachedMatches = [];
 let activeLeague = "premier";
+const matchDateInput = document.getElementById("matchDate");
+function localDateKey(date) { return `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,"0")}${String(date.getDate()).padStart(2,"0")}`; }
+function dateInputValue(date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`; }
+function selectedDateKey() { return localDateKey(new Date(`${matchDateInput.value}T12:00:00`)); }
+function changeSelectedDate(days) { const d = new Date(`${matchDateInput.value}T12:00:00`); d.setDate(d.getDate()+days); matchDateInput.value = dateInputValue(d); loadScoreboards(); }
 
 function safeText(value, fallback = "TBC") {
   return value === null || value === undefined || value === "" ? fallback : String(value);
@@ -77,10 +82,12 @@ async function getJSON(url) {
   return res.json();
 }
 async function loadScoreboards() {
-  dataStatus.innerHTML = "◷ <span>Refreshing online fixtures…</span>";
+  const dateKey = selectedDateKey();
+  const selectedLabel = new Date(`${matchDateInput.value}T12:00:00`).toLocaleDateString(undefined, {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+  dataStatus.innerHTML = `◷ <span>Loading ${selectedLabel}…</span>`;
   const configs = Object.values(leagueConfig).filter(c => c.code);
   const results = await Promise.allSettled(configs.map(async c => {
-    const data = await getJSON(`${ESPN}/${c.code}/scoreboard`);
+    const data = await getJSON(`${ESPN}/${c.code}/scoreboard?dates=${dateKey}`);
     return (data.events || []).map(event => eventToMatch(event, c.title, c.region)).filter(Boolean);
   }));
   const all = results.flatMap(r => r.status === "fulfilled" ? r.value : []);
@@ -91,8 +98,8 @@ async function loadScoreboards() {
   });
   const succeeded = results.filter(r => r.status === "fulfilled").length;
   if (succeeded) {
-    dataStatus.innerHTML = `◷ <span>Online · updated ${new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>`;
-    matchDisclaimer.textContent = "Scores and fixtures are loaded online from ESPN's public data endpoints. Coverage may vary; Botola Pro is not currently connected. Refresh if data fails to load.";
+    dataStatus.innerHTML = `◷ <span>Online · ${selectedLabel}</span>`;
+    matchDisclaimer.textContent = `Showing fixtures and results for ${selectedLabel}. Scores and fixtures are loaded from ESPN public data endpoints; coverage may vary. Botola Pro is not connected yet.`;
   } else {
     dataStatus.innerHTML = "◷ <span>Data source unavailable</span>";
     matchDisclaimer.textContent = "Could not load online fixtures right now. Check your connection and refresh the page. Botola Pro data still needs a separate source.";
@@ -104,7 +111,7 @@ function renderMatches() {
     (currentFilter === "all" || m.region === currentFilter) &&
     (!currentSearch || m.searchText.toLowerCase().includes(currentSearch.toLowerCase()))
   );
-  const display = filtered.slice(0, 12);
+  const display = filtered.slice(0, 50);
   const cards = display.map(m => {
     const stateClass = m.status === "LIVE" ? "live-pill" : "demo-pill";
     return `<article class="match-card">
@@ -117,14 +124,14 @@ function renderMatches() {
       <div class="match-card-bottom"><span>${m.time}</span><span>${m.venue}</span></div>
     </article>`;
   }).join("");
-  const botolaCard = currentFilter !== "international" && (!currentSearch || "botola morocco raja wydad as far botola pro".includes(currentSearch.toLowerCase())) ? `
+  const botolaCard = false ? `
     <article class="match-card morocco-data-card">
       <div class="match-card-top"><span class="match-league"><i class="league-bullet"></i>Botola Pro · Morocco</span><span class="demo-pill">NOT CONNECTED</span></div>
       <div class="teams"><div class="team"><span class="team-crest">MA</span><strong>Moroccan league</strong><small>Domestic football</small></div><div class="match-score">—<small>NO FEED</small></div><div class="team"><span class="team-crest">API</span><strong>Data source needed</strong><small>Not live yet</small></div></div>
       <div class="match-card-bottom"><span>Botola fixtures unavailable here</span><span>Setup required</span></div>
     </article>` : "";
   matchGrid.innerHTML = cards + botolaCard;
-  if (!cards && !botolaCard) matchGrid.innerHTML = `<p class="disclaimer">No online matches match your search/filter right now. Try “All matches” or clear the search.</p>`;
+  if (!display.length) matchGrid.innerHTML = `<div class="date-empty"><strong>No fixtures or results found for this date.</strong><p>Try another date, choose “All matches”, or clear the search. Some competitions may not provide historical/future data through this source.</p></div>`;
 }
 async function loadStandings(key) {
   activeLeague = key;
@@ -219,6 +226,11 @@ document.getElementById("newsletterForm").addEventListener("submit", e => {
 });
 document.getElementById("year").textContent = new Date().getFullYear();
 
+matchDateInput.value = dateInputValue(new Date());
+document.getElementById("prevDate").addEventListener("click", () => changeSelectedDate(-1));
+document.getElementById("nextDate").addEventListener("click", () => changeSelectedDate(1));
+document.getElementById("todayDate").addEventListener("click", () => { matchDateInput.value = dateInputValue(new Date()); loadScoreboards(); });
+matchDateInput.addEventListener("change", loadScoreboards);
 loadScoreboards();
 loadStandings("premier");
 loadNews();

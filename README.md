@@ -3,7 +3,7 @@
 This is the online-data test build of GoalPulse. It is a static HTML/CSS/JavaScript site suitable for GitHub Pages.
 
 ## Online data in this build
-- Match scoreboards: ESPN public JSON endpoints for Premier League, La Liga, Champions League, Ligue 1, Bundesliga and Serie A.
+- Date-based match scoreboards: choose a date, use previous/next day or Today; ESPN public JSON endpoints for Premier League, La Liga, Champions League, Ligue 1, Bundesliga and Serie A.
 - League standings: ESPN endpoint for the selected supported competition.
 - Headlines: ESPN online headlines for Premier League and Champions League.
 - Refresh: scoreboards every 5 minutes; standings every 15 minutes.
@@ -22,7 +22,7 @@ Open `index.html` in a browser with internet access. Some browsers may limit `fe
 3. Upload/replace `index.html`, `styles.css`, `script.js`, `README.md` and `assets/favicon.svg`.
 4. Commit the changes to the `main` branch.
 5. Wait for GitHub Pages to redeploy, then hard-refresh the live site with Ctrl+F5.
-6. Test matches, standings, news and mobile layout.
+6. Test the date picker with today and past dates, then check scoreboards, standings, news and mobile layout. Match availability varies by date and competition. The standings endpoint may remain unavailable because this public ESPN endpoint is undocumented.
 
 ## Current status
 - Website UI: ready for test

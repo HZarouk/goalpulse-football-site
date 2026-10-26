@@ -40,14 +40,14 @@
     <section class="ticker"><span class="ticker-label">THE PULSE</span><div class="ticker-track"><span>THE BEAUTIFUL GAME <b>✳</b></span><span>GLOBAL FOOTBALL <b>✳</b></span><span>MAGHRIBI PRIDE <b>✳</b></span><span>EVERY MATCH MATTERS <b>✳</b></span></div></section>
 
     <section class="section matches-section" id="matches">
-      <div class="section-heading"><div><div class="eyebrow">ON THE RADAR</div><h2>Match centre<span class="green-dot">.</span></h2><p class="section-sub">A quick view of the game calendar. Demo fixtures are clearly labelled.</p></div><a class="text-link" href="#leagues">Explore leagues <span>→</span></a></div>
-      <div class="match-controls"><div class="segmented" role="group" aria-label="Filter fixtures"><button class="segment active" data-filter="all">All matches</button><button class="segment" data-filter="international">International</button><button class="segment" data-filter="morocco">Morocco</button></div><div class="date-chip" id="dataStatus">◷ <span>Connecting to football data…</span></div></div>
+      <div class="section-heading"><div><div class="eyebrow">ON THE RADAR</div><h2>Match centre<span class="green-dot">.</span></h2><p class="section-sub">Choose any date to see available fixtures and final scores from online competitions.</p></div><a class="text-link" href="#leagues">Explore leagues <span>→</span></a></div>
+      <div class="match-controls match-controls-wrap"><div class="segmented" role="group" aria-label="Filter fixtures"><button class="segment active" data-filter="all">All matches</button><button class="segment" data-filter="international">International</button><button class="segment" data-filter="morocco">Morocco</button></div><div class="date-picker"><button type="button" id="prevDate" aria-label="Previous day">←</button><input type="date" id="matchDate" aria-label="Choose match date"><button type="button" id="nextDate" aria-label="Next day">→</button><button type="button" id="todayDate">Today</button></div><div class="date-chip" id="dataStatus">◷ <span>Connecting to football data…</span></div></div>
       <div class="match-grid" id="matchGrid"></div>
       <p class="disclaimer" id="matchDisclaimer">Connecting to the online football data source. Data availability depends on league coverage and the provider.</p>
     </section>
 
     <section class="section leagues-section" id="leagues">
-      <div class="section-heading"><div><div class="eyebrow">FOLLOW YOUR COMPETITION</div><h2>Leagues & tables<span class="green-dot">.</span></h2></div><span class="mini-label">SEASON TABLES · DEMO</span></div>
+      <div class="section-heading"><div><div class="eyebrow">FOLLOW YOUR COMPETITION</div><h2>Leagues & tables<span class="green-dot">.</span></h2></div><span class="mini-label">ONLINE TABLES · BETA</span></div>
       <div class="league-layout">
         <div class="league-list" id="leagueList">
           <button class="league-select selected" data-league="premier"><span class="league-icon purple">PL</span><span><strong>Premier League</strong><small>England</small></span><span class="chevron">↗</span></button>
@@ -55,7 +55,7 @@
           <button class="league-select" data-league="botola"><span class="league-icon green">BP</span><span><strong>Botola Pro</strong><small>Morocco</small></span><span class="chevron">↗</span></button>
           <button class="league-select" data-league="ucl"><span class="league-icon blue">UCL</span><span><strong>Champions League</strong><small>Europe</small></span><span class="chevron">↗</span></button>
         </div>
-        <div class="table-card"><div class="table-top"><div><span class="mini-label">ONLINE LEAGUE STANDINGS</span><h3 id="tableTitle">Premier League</h3></div><span class="table-season" id="tableDataBadge">CONNECTING…</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Club</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="standingsBody"></tbody></table></div><div class="table-footer"><span>Illustrative data for interface testing</span><span>View all ↗</span></div></div>
+        <div class="table-card"><div class="table-top"><div><span class="mini-label">ONLINE LEAGUE STANDINGS</span><h3 id="tableTitle">Premier League</h3></div><span class="table-season" id="tableDataBadge">CONNECTING…</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Club</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="standingsBody"></tbody></table></div><div class="table-footer"><span>Standings depend on online source availability</span><span>View all ↗</span></div></div>
       </div>
     </section>
 

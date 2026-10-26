@@ -6,3 +6,15 @@
 @keyframes liveGlow{50%{background:#c7f36a2b}}
 .empty-table{white-space:normal;line-height:1.7;color:#9ca898;max-width:400px}
 .news-meta a{color:var(--green);font-size:9px}
+
+/* Date-based match centre */
+.match-controls-wrap{flex-wrap:wrap;gap:14px}
+.date-picker{display:flex;align-items:center;gap:7px}
+.date-picker button,.date-picker input{background:#1b241c;color:var(--text);border:1px solid var(--line);border-radius:7px;min-height:38px;padding:7px 11px;font-size:11px}
+.date-picker button{cursor:pointer;font-weight:800}
+.date-picker button:hover{border-color:var(--green);color:var(--green)}
+.date-picker input{color-scheme:dark;min-width:145px}
+.date-empty{grid-column:1/-1;padding:30px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text)}
+.date-empty strong{color:var(--green);font-size:15px}
+.date-empty p{margin:8px 0 0;color:var(--muted);font-size:12px;max-width:650px}
+@media(max-width:760px){.match-controls-wrap{align-items:flex-start}.date-picker{order:2;width:100%;flex-wrap:wrap}.date-picker input{flex:1}.match-controls-wrap .date-chip{order:3}}
