@@ -1,23 +1,33 @@
-# GoalPulse — Phase A upgrade
+# GoalPulse — Phase B: Mobile & Launch Readiness
 
-This package updates the current GoalPulse static site for the first phase of the agreed roadmap: **Leagues + News & Analysis**.
+This package builds on the tested Phase A version (Leagues + News & Analysis) and focuses on responsive layout and usability.
 
-## What's changed
-- League/table selector is generated from the same competition configuration used by Match Centre, instead of showing only five hard-coded choices.
-- Competition list stays grouped across Europe, the Americas and Asia; Morocco/Botola is not included.
-- News requests now try multiple supported competitions across Europe, the Americas and Asia, then display up to nine unique headlines from responses that succeed.
-- News headlines/descriptions are HTML-escaped before rendering.
-- Existing date selector, region filters, Match Centre and visual styling are retained.
+## Included
+- Improved mobile header and navigation spacing.
+- Responsive match controls, competition selector and date controls.
+- More robust mobile match cards and league selector layouts.
+- Horizontally scrollable standings table on small screens.
+- Improved spacing for news cards, newsletter and footer.
+- Visible keyboard focus styles and reduced-motion support.
+- No intentional changes to ESPN data endpoints or competition configuration.
 
-## Install on GitHub Pages
+## Deploy
 1. Download and unzip this package.
-2. In the `goalpulse-football-site` repository, replace `index.html`, `script.js`, `styles.css`, and `README.md` with the files from this package.
-3. Commit the changes to the branch configured for GitHub Pages.
-4. Wait for deployment, then open the site and press `Ctrl + Shift + R`.
-5. Test each league in **Leagues & Tables** and check **News & Analysis**. News/standings coverage depends on ESPN's public, undocumented endpoints and can vary by competition.
+2. Copy `index.html`, `script.js`, `styles.css`, and `README.md` from `gp_work/` into the root of your `goalpulse-football-site` GitHub repository, replacing the matching files.
+3. Commit the changes and wait for GitHub Pages to deploy.
+4. Hard-refresh the site with `Ctrl + Shift + R`.
 
-## Important limitations
-- This is a static front-end; no backend, account system, or email collection is implemented.
-- ESPN endpoints are public but undocumented and are not a guaranteed developer API. A successful HTTP response does not guarantee data is available for every competition.
-- The newsletter remains a visual preview and does not collect or send emails.
-- This package has passed a JavaScript syntax check, but must still be tested on the deployed GitHub Pages site and on mobile devices.
+## Mobile QA checklist
+Test at approximately 360px, 390px, 768px, and desktop width:
+- Header/menu and navigation links.
+- Match region tabs, competition dropdown, date picker and Today button.
+- Match cards without horizontal page overflow.
+- League list and standings table (the table itself may scroll horizontally).
+- News cards, newsletter form, footer links.
+- Browser DevTools Console and Network for runtime/API errors.
+
+## Verification note
+The CSS changes have been reviewed statically and the JavaScript syntax check is run before packaging. A live browser/device test cannot be claimed from this package alone; complete the checklist against the deployed GitHub Pages site.
+
+## Data note
+The site uses public ESPN endpoints. Availability, competition coverage and data freshness depend on the upstream service; a successful HTTP response does not guarantee every competition has data for every date.
