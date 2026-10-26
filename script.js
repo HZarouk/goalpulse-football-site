@@ -12,7 +12,19 @@ const leagueConfig = {
   ucl: { title: "Champions League", code: "uefa.champions", region: "international" },
   ligue1: { title: "Ligue 1", code: "fra.1", region: "international" },
   bundesliga: { title: "Bundesliga", code: "ger.1", region: "international" },
-  seriea: { title: "Serie A", code: "ita.1", region: "international" }
+  seriea: { title: "Serie A", code: "ita.1", region: "international" },
+  eredivisie: { title: "Eredivisie", code: "ned.1", region: "international" },
+  portugal: { title: "Primeira Liga", code: "por.1", region: "international" },
+  mls: { title: "MLS", code: "usa.1", region: "international" },
+  saudi: { title: "Saudi Pro League", code: "sau.1", region: "international" },
+  turkey: { title: "Turkish Super Lig", code: "tur.1", region: "international" },
+  scotland: { title: "Scottish Premiership", code: "sco.1", region: "international" },
+  europa: { title: "Europa League", code: "uefa.europa", region: "international" },
+  brazil: { title: "Brazil Serie A", code: "bra.1", region: "international" },
+  argentina: { title: "Argentina Primera División", code: "arg.1", region: "international" },
+  mexico: { title: "Liga MX", code: "mex.1", region: "international" },
+  japan: { title: "J1 League", code: "jpn.1", region: "international" },
+  australia: { title: "A-League", code: "aus.1", region: "international" }
 };
 const matchGrid = document.getElementById("matchGrid");
 const dataStatus = document.getElementById("dataStatus");
@@ -22,10 +34,21 @@ const standingsBody = document.getElementById("standingsBody");
 const tableDataBadge = document.getElementById("tableDataBadge");
 const newsStatus = document.getElementById("newsStatus");
 let currentFilter = "all";
-let currentSearch = "";
+let currentSearch = "";\nlet currentCompetition = "all";
 let cachedMatches = [];
 let activeLeague = "premier";
 const matchDateInput = document.getElementById("matchDate");
+const competitionFilter = document.getElementById("competitionFilter");
+Object.entries(leagueConfig).filter(([key, conf]) => conf.code).forEach(([key, conf]) => {
+  const option = document.createElement("option");
+  option.value = key;
+  option.textContent = conf.title;
+  competitionFilter.appendChild(option);
+});
+competitionFilter.addEventListener("change", () => {
+  currentCompetition = competitionFilter.value;
+  renderMatches();
+});
 function localDateKey(date) { return `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,"0")}${String(date.getDate()).padStart(2,"0")}`; }
 function dateInputValue(date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`; }
 function selectedDateKey() { return localDateKey(new Date(`${matchDateInput.value}T12:00:00`)); }
@@ -63,6 +86,7 @@ function eventToMatch(event, leagueName, region) {
   const status = live ? "LIVE" : done ? "FULL TIME" : "UPCOMING";
   return {
     league: leagueName,
+    competitionKey: Object.keys(leagueConfig).find(key => leagueConfig[key].title === leagueName) || "unknown",
     region,
     time: formatKickoff(event.date),
     home: safeText(home.team?.displayName, "Home"),
@@ -109,6 +133,7 @@ async function loadScoreboards() {
 function renderMatches() {
   const filtered = cachedMatches.filter(m =>
     (currentFilter === "all" || m.region === currentFilter) &&
+    (currentCompetition === "all" || m.competitionKey === currentCompetition) &&
     (!currentSearch || m.searchText.toLowerCase().includes(currentSearch.toLowerCase()))
   );
   const display = filtered.slice(0, 50);
@@ -145,17 +170,12 @@ async function loadStandings(key) {
   tableDataBadge.textContent = "LOADING…";
   standingsBody.innerHTML = `<tr><td colspan="7">Loading online standings…</td></tr>`;
   try {
-    const data = await getJSON(`https://site.api.espn.com/apis/v2/sports/soccer/${conf.code}/standings`);
-    const groups = Array.isArray(data.children) ? data.children : [];
-    let entries = Array.isArray(data.standings?.entries) ? data.standings.entries : [];
-    if (!entries.length && groups.length) {
-      entries = groups.flatMap(group => {
-        if (Array.isArray(group.standings?.entries)) return group.standings.entries;
-        if (Array.isArray(group.children)) return group.children.flatMap(child => child.standings?.entries || []);
-        return [];
-      });
-    }
-    if (!entries.length) throw new Error("No standings available in the provider response");
+    const data = await getJSON(`${ESPN}/${conf.code}/standings`);
+    const groups = data.children || [];
+    let entries = data.standings?.entries || [];
+    if (!entries.length && groups.length) entries = groups.flatMap(g => g.standings?.entries || []);
+    if (!entries.length && data.standings?.entries) entries = data.standings.entries;
+    if (!entries.length) throw new Error("No standings available");
     const rows = entries.slice(0, 10).map((entry, i) => {
       const stats = {};
       (entry.stats || []).forEach(s => { stats[s.name] = s.displayValue ?? s.value; });

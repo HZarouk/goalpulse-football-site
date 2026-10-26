@@ -18,3 +18,10 @@
 .date-empty strong{color:var(--green);font-size:15px}
 .date-empty p{margin:8px 0 0;color:var(--muted);font-size:12px;max-width:650px}
 @media(max-width:760px){.match-controls-wrap{align-items:flex-start}.date-picker{order:2;width:100%;flex-wrap:wrap}.date-picker input{flex:1}.match-controls-wrap .date-chip{order:3}}
+
+/* Competition dropdown filter */
+.competition-filter{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:11px;font-weight:700;white-space:nowrap}
+.competition-filter select{max-width:220px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:11px 30px 11px 12px;outline:none}
+.competition-filter select:focus{border-color:var(--green)}
+@media(max-width:900px){.match-controls-wrap{flex-wrap:wrap}.competition-filter{order:2}.date-picker{order:3}.date-chip{order:4}}
+@media(max-width:560px){.competition-filter{width:100%;justify-content:space-between}.competition-filter select{flex:1;max-width:none}.date-picker{flex-wrap:wrap}}
