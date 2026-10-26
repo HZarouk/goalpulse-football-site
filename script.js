@@ -103,7 +103,7 @@ function eventToMatch(event, leagueName, region) {
   const hs = home.score;
   const as = away.score;
   let score = "VS";
-  if (hs !== undefined && as !== undefined && (live || done)) score = `${as} – ${hs}`;
+  if (hs !== undefined && as !== undefined && (live || done)) score = `${hs} – ${as}`;
   const status = live ? "LIVE" : done ? "FULL TIME" : "UPCOMING";
   return {
     eventId: String(event.id || ""),
