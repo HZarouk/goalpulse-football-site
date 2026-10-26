@@ -145,3 +145,6 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .detail-lineups{display:grid;grid-template-columns:1fr 1fr;gap:14px}.detail-lineup{background:var(--panel2);border-radius:12px;padding:16px}.detail-lineup h4{margin:0 0 12px;font-size:13px}.detail-lineup ol{padding-left:22px;margin:0;color:var(--muted);font-size:12px}.detail-lineup li{padding:4px 0}
 @media(max-width:600px){.match-modal{padding:8px}.match-modal-panel{padding:22px 14px 16px;border-radius:16px;max-height:94vh}.match-modal-scoreline{grid-template-columns:1fr 1fr 1fr;gap:5px}.detail-crest{width:48px;height:48px;border-radius:14px}.detail-score h2{font-size:11px}.detail-tabs{gap:5px}.detail-tab{padding:9px 10px;font-size:12px}.detail-stat{grid-template-columns:1fr 1.5fr 1fr;gap:7px}.detail-lineups{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.match-card-clickable{transition:none}}
+
+/* Match details: goal scorers and timeline */
+.goal-scorers{margin-bottom:22px}.goal-scorers h3,.timeline-heading{font-size:11px;letter-spacing:.12em;color:var(--muted);margin:0 0 10px;font-weight:800}.goal-event{align-items:center}.goal-event strong{color:var(--text)}.goal-description{display:inline-block;color:var(--muted);font-size:12px;margin-top:3px}.goal-score{margin-left:auto;color:var(--green);font-size:13px;white-space:nowrap}.timeline-heading{margin-top:18px}

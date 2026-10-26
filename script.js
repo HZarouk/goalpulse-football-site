@@ -287,6 +287,28 @@ function renderMatchDetailTab() {
     return;
   }
   const plays = data.plays || data.commentary?.items || [];
+  // ESPN summaries commonly expose scoring plays with scoringPlay=true and athletes[].
+  // Never infer a scorer from the final score: only show names supplied by the feed.
+  const goals = plays.filter(p => {
+    const typeText = `${p.type?.text || ""} ${p.type?.name || ""} ${p.text || p.shortText || ""}`.toLowerCase();
+    return p.scoringPlay === true || /\b(goal|penalty scored|own goal)\b/.test(typeText);
+  });
+  const scorerName = p => {
+    const athletes = Array.isArray(p.athletes) ? p.athletes : Array.isArray(p.participants) ? p.participants : [];
+    const athlete = athletes.map(a => a.athlete || a.player || a).find(a => a?.displayName || a?.fullName || a?.name);
+    if (athlete) return athlete.displayName || athlete.fullName || athlete.name;
+    return p.scorer?.displayName || p.scorer?.fullName || p.athlete?.displayName || p.athlete?.fullName || "";
+  };
+  const goalRows = goals.map(p => {
+    const clock = p.clock?.displayValue || p.time?.displayValue || p.clock || p.period?.displayValue || "•";
+    const name = scorerName(p);
+    const description = p.text || p.shortText || p.type?.text || "Goal";
+    const score = p.homeScore != null && p.awayScore != null ? `${p.homeScore}–${p.awayScore}` : "";
+    return `<div class="detail-event goal-event"><time>${detailText(clock,"•")}</time><span><strong>⚽ ${escapeHTML(name || "Goal scorer not listed")}</strong><br><span class="goal-description">${escapeHTML(description)}</span></span>${score ? `<b class="goal-score">${escapeHTML(score)}</b>` : ""}</div>`;
+  }).reverse().join("");
+  const goalSection = goals.length
+    ? `<section class="goal-scorers"><h3>GOAL SCORERS</h3><div class="detail-event-list">${goalRows}</div></section>`
+    : `<section class="goal-scorers"><h3>GOAL SCORERS</h3><div class="detail-empty">Scorer information is not available from ESPN for this match yet.</div></section>`;
   const events = plays.map(p => {
     const clock = p.clock?.displayValue || p.time?.displayValue || p.clock || "";
     const text = p.text || p.shortText || p.type?.text || p.type?.name || "";
@@ -300,7 +322,7 @@ function renderMatchDetailTab() {
     `<div class="detail-event"><time>VENUE</time><span>${detailText(venue,"Venue not listed")}</span></div>`,
     officials ? `<div class="detail-event"><time>OFFICIAL</time><span>${escapeHTML(officials)}</span></div>` : ""
   ].join("");
-  root.innerHTML = `<div class="detail-event-list">${events || '<div class="detail-empty">No event timeline is available for this match yet.</div>'}${meta}</div>`;
+  root.innerHTML = `${goalSection}<h3 class="timeline-heading">MATCH TIMELINE</h3><div class="detail-event-list">${events || '<div class="detail-empty">No event timeline is available for this match yet.</div>'}${meta}</div>`;
 }
 document.querySelectorAll("[data-detail-tab]").forEach(button => button.addEventListener("click", () => {
   activeDetailTab = button.dataset.detailTab;
