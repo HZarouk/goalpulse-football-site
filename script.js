@@ -2,30 +2,29 @@
  GoalPulse online data integration.
  Scoreboards, standings and headlines use ESPN's public, undocumented JSON endpoints.
  They require no API key, but are not a guaranteed/official developer API and may change.
- ESPN coverage does not include every competition; Botola Pro is left clearly unconnected.
+ Competitions are grouped by Europe, the Americas and Asia.
 */
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const ESPN_STANDINGS = "https://site.api.espn.com/apis/v2/sports/soccer";
 const leagueConfig = {
-  premier: { title: "Premier League", code: "eng.1", region: "international" },
-  laliga: { title: "La Liga", code: "esp.1", region: "international" },
-  botola: { title: "Botola Pro", code: null, region: "morocco" },
-  ucl: { title: "Champions League", code: "uefa.champions", region: "international" },
-  ligue1: { title: "Ligue 1", code: "fra.1", region: "international" },
-  bundesliga: { title: "Bundesliga", code: "ger.1", region: "international" },
-  seriea: { title: "Serie A", code: "ita.1", region: "international" },
-  eredivisie: { title: "Eredivisie", code: "ned.1", region: "international" },
-  portugal: { title: "Primeira Liga", code: "por.1", region: "international" },
-  mls: { title: "MLS", code: "usa.1", region: "international" },
-  saudi: { title: "Saudi Pro League", code: "sau.1", region: "international" },
-  turkey: { title: "Turkish Super Lig", code: "tur.1", region: "international" },
-  scotland: { title: "Scottish Premiership", code: "sco.1", region: "international" },
-  europa: { title: "Europa League", code: "uefa.europa", region: "international" },
-  brazil: { title: "Brazil Serie A", code: "bra.1", region: "international" },
-  argentina: { title: "Argentina Primera División", code: "arg.1", region: "international" },
-  mexico: { title: "Liga MX", code: "mex.1", region: "international" },
-  japan: { title: "J1 League", code: "jpn.1", region: "international" },
-  australia: { title: "A-League", code: "aus.1", region: "international" }
+  premier: { title: "Premier League", code: "eng.1", region: "europe" },
+  laliga: { title: "La Liga", code: "esp.1", region: "europe" },
+  ucl: { title: "Champions League", code: "uefa.champions", region: "europe" },
+  ligue1: { title: "Ligue 1", code: "fra.1", region: "europe" },
+  bundesliga: { title: "Bundesliga", code: "ger.1", region: "europe" },
+  seriea: { title: "Serie A", code: "ita.1", region: "europe" },
+  eredivisie: { title: "Eredivisie", code: "ned.1", region: "europe" },
+  portugal: { title: "Primeira Liga", code: "por.1", region: "europe" },
+  mls: { title: "MLS", code: "usa.1", region: "americas" },
+  saudi: { title: "Saudi Pro League", code: "sau.1", region: "asia" },
+  turkey: { title: "Turkish Super Lig", code: "tur.1", region: "europe" },
+  scotland: { title: "Scottish Premiership", code: "sco.1", region: "europe" },
+  europa: { title: "Europa League", code: "uefa.europa", region: "europe" },
+  brazil: { title: "Brazil Serie A", code: "bra.1", region: "americas" },
+  argentina: { title: "Argentina Primera División", code: "arg.1", region: "americas" },
+  mexico: { title: "Liga MX", code: "mex.1", region: "americas" },
+  japan: { title: "J1 League", code: "jpn.1", region: "asia" },
+  australia: { title: "A-League", code: "aus.1", region: "asia" }
 };
 const matchGrid = document.getElementById("matchGrid");
 const dataStatus = document.getElementById("dataStatus");
@@ -125,10 +124,10 @@ async function loadScoreboards() {
   const succeeded = results.filter(r => r.status === "fulfilled").length;
   if (succeeded) {
     dataStatus.innerHTML = `◷ <span>Online · ${selectedLabel}</span>`;
-    matchDisclaimer.textContent = `Showing fixtures and results for ${selectedLabel}. Scores and fixtures are loaded from ESPN public data endpoints; coverage may vary. Botola Pro is not connected yet.`;
+    matchDisclaimer.textContent = `Showing fixtures and results for ${selectedLabel}. Scores and fixtures are loaded from ESPN public data endpoints; coverage may vary. Competitions are grouped by Europe, the Americas and Asia.`;
   } else {
     dataStatus.innerHTML = "◷ <span>Data source unavailable</span>";
-    matchDisclaimer.textContent = "Could not load online fixtures right now. Check your connection and refresh the page. Botola Pro data still needs a separate source.";
+    matchDisclaimer.textContent = "Could not load online fixtures right now. Check your connection and refresh the page. Some competitions may be temporarily unavailable from the public data source.";
   }
   renderMatches();
 }
@@ -151,24 +150,13 @@ function renderMatches() {
       <div class="match-card-bottom"><span>${m.time}</span><span>${m.venue}</span></div>
     </article>`;
   }).join("");
-  const botolaCard = false ? `
-    <article class="match-card morocco-data-card">
-      <div class="match-card-top"><span class="match-league"><i class="league-bullet"></i>Botola Pro · Morocco</span><span class="demo-pill">NOT CONNECTED</span></div>
-      <div class="teams"><div class="team"><span class="team-crest">MA</span><strong>Moroccan league</strong><small>Domestic football</small></div><div class="match-score">—<small>NO FEED</small></div><div class="team"><span class="team-crest">API</span><strong>Data source needed</strong><small>Not live yet</small></div></div>
-      <div class="match-card-bottom"><span>Botola fixtures unavailable here</span><span>Setup required</span></div>
-    </article>` : "";
-  matchGrid.innerHTML = cards + botolaCard;
+  matchGrid.innerHTML = cards;
   if (!display.length) matchGrid.innerHTML = `<div class="date-empty"><strong>No fixtures or results found for this date.</strong><p>Try another date, choose “All matches”, or clear the search. Some competitions may not provide historical/future data through this source.</p></div>`;
 }
 async function loadStandings(key) {
   activeLeague = key;
   const conf = leagueConfig[key];
   tableTitle.textContent = conf.title;
-  if (!conf.code) {
-    tableDataBadge.textContent = "NOT CONNECTED";
-    standingsBody.innerHTML = `<tr><td colspan="7" class="empty-table">Botola Pro standings need a dedicated data provider. We are not showing invented table data.</td></tr>`;
-    return;
-  }
   tableDataBadge.textContent = "LOADING…";
   standingsBody.innerHTML = `<tr><td colspan="7">Loading online standings…</td></tr>`;
   try {
@@ -243,7 +231,7 @@ document.getElementById("searchToggle").addEventListener("click", () => {
 document.getElementById("siteSearch").addEventListener("input", e => {
   currentSearch = e.target.value.trim();
   renderMatches();
-  document.getElementById("searchHint").textContent = currentSearch ? `Searching online fixtures and stories for “${currentSearch}”` : "Try “Morocco”, “Arsenal” or “Botola”";
+  document.getElementById("searchHint").textContent = currentSearch ? `Searching online fixtures and stories for “${currentSearch}”` : "Try “Arsenal”, “Real Madrid” or “Inter Miami”";
 });
 document.getElementById("menuToggle").addEventListener("click", () => document.querySelector(".desktop-nav").classList.toggle("open"));
 document.querySelectorAll(".nav-link").forEach(a => a.addEventListener("click", () => document.querySelector(".desktop-nav").classList.remove("open")));
