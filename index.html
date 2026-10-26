@@ -70,6 +70,26 @@
     <section class="newsletter" id="newsletter"><div><div class="eyebrow">THE WEEKLY WHISTLE</div><h2>Stay close to the game.</h2><p>Newsletter signup is a visual preview only. No email is collected or sent yet.</p></div><form id="newsletterForm"><label class="sr-only" for="emailInput">Email address</label><input type="email" id="emailInput" placeholder="Your email address" required><button class="button" type="submit">Coming soon <span>↗</span></button></form><div class="newsletter-note" id="newsletterNote" aria-live="polite"></div></section>
   </main>
   <footer class="footer"><a class="brand" href="#"><span class="brand-mark">G<span>+</span></span><span>GOAL<span class="brand-light">PULSE</span></span></a><p>Independent football concept · Built for the global game.</p><div class="footer-links"><a href="#matches">Matches</a><a href="#leagues">Leagues</a><a href="#news">Stories</a><a href="#global">Global football</a></div><small>© <span id="year"></span> GoalPulse. Online data test — coverage depends on the public provider.</small></footer>
+  <div class="match-modal" id="matchModal" hidden>
+    <div class="match-modal-backdrop" data-close-match></div>
+    <section class="match-modal-panel" role="dialog" aria-modal="true" aria-labelledby="matchModalTitle">
+      <button class="match-modal-close" type="button" id="closeMatchModal" aria-label="Close match details">×</button>
+      <div class="match-modal-kicker" id="detailLeague">MATCH CENTRE</div>
+      <div class="match-modal-scoreline">
+        <div class="detail-team"><span class="detail-crest" id="detailHomeCrest">H</span><strong id="detailHome">Home</strong><small>HOME</small></div>
+        <div class="detail-score"><div class="detail-status" id="detailStatus">MATCH DETAILS</div><h2 id="matchModalTitle">Home vs Away</h2><strong id="detailScore">VS</strong><small id="detailTime"></small></div>
+        <div class="detail-team"><span class="detail-crest" id="detailAwayCrest">A</span><strong id="detailAway">Away</strong><small>AWAY</small></div>
+      </div>
+      <div class="detail-venue" id="detailVenue"></div>
+      <div class="detail-tabs" role="tablist" aria-label="Match information">
+        <button class="detail-tab active" type="button" data-detail-tab="overview">Overview</button>
+        <button class="detail-tab" type="button" data-detail-tab="statistics">Statistics</button>
+        <button class="detail-tab" type="button" data-detail-tab="lineups">Lineups</button>
+      </div>
+      <div class="detail-content" id="detailContent" aria-live="polite"><p>Loading match information…</p></div>
+      <p class="detail-source-note">Match data provided by ESPN public data endpoints. Details available vary by competition and match.</p>
+    </section>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>

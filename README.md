@@ -1,33 +1,24 @@
-# GoalPulse — Phase B: Mobile & Launch Readiness
+# GoalPulse — Phase C: Match Details
 
-This package builds on the tested Phase A version (Leagues + News & Analysis) and focuses on responsive layout and usability.
+This package adds a responsive match-details modal to the current GoalPulse Phase B site.
 
-## Included
-- Improved mobile header and navigation spacing.
-- Responsive match controls, competition selector and date controls.
-- More robust mobile match cards and league selector layouts.
-- Horizontally scrollable standings table on small screens.
-- Improved spacing for news cards, newsletter and footer.
-- Visible keyboard focus styles and reduced-motion support.
-- No intentional changes to ESPN data endpoints or competition configuration.
+## New features
+- Click or keyboard-activate any match card to open Match Details.
+- Overview tab: match status, scheduled time, venue, and event timeline when supplied by ESPN.
+- Statistics tab: displays available team statistics only; unavailable values are not fabricated.
+- Lineups tab: displays player data when supplied by the endpoint.
+- Mobile-friendly layout, Escape-to-close, backdrop click, and visible focus styles.
+- Existing fixtures, filters, date controls, standings, news, and page layout are retained.
 
 ## Deploy
 1. Download and unzip this package.
-2. Copy `index.html`, `script.js`, `styles.css`, and `README.md` from `gp_work/` into the root of your `goalpulse-football-site` GitHub repository, replacing the matching files.
+2. In the `goalpulse-football-site` GitHub repository, upload/replace `index.html`, `script.js`, and `styles.css` in the repository root.
 3. Commit the changes and wait for GitHub Pages to deploy.
-4. Hard-refresh the site with `Ctrl + Shift + R`.
+4. Open the site and hard-refresh with `Ctrl + Shift + R`.
+5. Click a match card and test Overview, Statistics, Lineups, close button, backdrop click, and Escape key.
 
-## Mobile QA checklist
-Test at approximately 360px, 390px, 768px, and desktop width:
-- Header/menu and navigation links.
-- Match region tabs, competition dropdown, date picker and Today button.
-- Match cards without horizontal page overflow.
-- League list and standings table (the table itself may scroll horizontally).
-- News cards, newsletter form, footer links.
-- Browser DevTools Console and Network for runtime/API errors.
+## Data limitations
+The site uses ESPN public, undocumented JSON endpoints. These are not a guaranteed official developer API and may change. The endpoint may not provide statistics, lineups, or event timelines for every competition or match. The interface explicitly shows a not-available message when extra data cannot be retrieved; it does not invent match facts.
 
-## Verification note
-The CSS changes have been reviewed statically and the JavaScript syntax check is run before packaging. A live browser/device test cannot be claimed from this package alone; complete the checklist against the deployed GitHub Pages site.
-
-## Data note
-The site uses public ESPN endpoints. Availability, competition coverage and data freshness depend on the upstream service; a successful HTTP response does not guarantee every competition has data for every date.
+## QA note
+JavaScript syntax was checked when packaging. A live browser/device test against the deployed site has not been performed as part of this package. Verify desktop and mobile behavior after deployment.

@@ -106,6 +106,10 @@ function eventToMatch(event, leagueName, region) {
   if (hs !== undefined && as !== undefined && (live || done)) score = `${as} – ${hs}`;
   const status = live ? "LIVE" : done ? "FULL TIME" : "UPCOMING";
   return {
+    eventId: String(event.id || ""),
+    leagueCode: Object.values(leagueConfig).find(c => c.title === leagueName)?.code || "",
+    kickoffISO: event.date || "",
+    rawStatus: safeText(event.status?.type?.detail, status),
     league: leagueName,
     competitionKey: Object.keys(leagueConfig).find(key => leagueConfig[key].title === leagueName) || "unknown",
     region,
@@ -160,7 +164,7 @@ function renderMatches() {
   const display = filtered.slice(0, 50);
   const cards = display.map(m => {
     const stateClass = m.status === "LIVE" ? "live-pill" : "demo-pill";
-    return `<article class="match-card">
+    return `<article class="match-card match-card-clickable" tabindex="0" role="button" aria-label="View match details: ${escapeHTML(m.home)} vs ${escapeHTML(m.away)}" data-event-id="${escapeHTML(m.eventId)}" data-league-code="${escapeHTML(m.leagueCode)}">
       <div class="match-card-top"><span class="match-league"><i class="league-bullet"></i>${m.league}</span><span class="${stateClass}">${m.status}</span></div>
       <div class="teams">
         <div class="team"><span class="team-crest">${m.abbrH}</span><strong>${m.home}</strong><small>Home</small></div>
@@ -171,8 +175,142 @@ function renderMatches() {
     </article>`;
   }).join("");
   matchGrid.innerHTML = cards;
+  matchGrid.querySelectorAll(".match-card-clickable").forEach(card => {
+    const open = () => {
+      const match = display.find(item => item.eventId === card.dataset.eventId);
+      if (match) openMatchDetails(match);
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+    });
+  });
   if (!display.length) matchGrid.innerHTML = `<div class="date-empty"><strong>No fixtures or results found for this date.</strong><p>Try another date, choose “All matches”, or clear the search. Some competitions may not provide historical/future data through this source.</p></div>`;
 }
+
+const matchModal = document.getElementById("matchModal");
+let activeDetailMatch = null;
+let activeDetailTab = "overview";
+let activeDetailPayload = null;
+function detailText(value, fallback = "") { return escapeHTML(value === undefined || value === null || value === "" ? fallback : value); }
+function closeMatchDetails() {
+  matchModal.hidden = true;
+  document.body.style.overflow = "";
+  activeDetailMatch = null;
+}
+function openMatchDetails(match) {
+  activeDetailMatch = match;
+  activeDetailPayload = null;
+  activeDetailTab = "overview";
+  document.querySelectorAll(".detail-tab").forEach(b => b.classList.toggle("active", b.dataset.detailTab === activeDetailTab));
+  document.getElementById("detailLeague").textContent = match.league;
+  document.getElementById("detailHome").textContent = match.home;
+  document.getElementById("detailAway").textContent = match.away;
+  document.getElementById("detailHomeCrest").textContent = match.abbrH;
+  document.getElementById("detailAwayCrest").textContent = match.abbrA;
+  document.getElementById("matchModalTitle").textContent = `${match.home} vs ${match.away}`;
+  document.getElementById("detailScore").textContent = match.score;
+  document.getElementById("detailStatus").textContent = match.status;
+  document.getElementById("detailTime").textContent = match.time;
+  document.getElementById("detailVenue").textContent = match.venue;
+  matchModal.hidden = false;
+  document.body.style.overflow = "hidden";
+  document.getElementById("detailContent").innerHTML = '<div class="detail-empty">Loading available match details…</div>';
+  loadMatchSummary(match);
+  document.getElementById("closeMatchModal").focus();
+}
+async function loadMatchSummary(match) {
+  if (!match.eventId || !match.leagueCode) {
+    document.getElementById("detailContent").innerHTML = '<div class="detail-empty">Detailed data is not available for this match.</div>';
+    return;
+  }
+  try {
+    const payload = await getJSON(`${ESPN}/${match.leagueCode}/summary?event=${encodeURIComponent(match.eventId)}`);
+    if (activeDetailMatch?.eventId !== match.eventId) return;
+    activeDetailPayload = payload;
+    renderMatchDetailTab();
+  } catch (error) {
+    if (activeDetailMatch?.eventId !== match.eventId) return;
+    document.getElementById("detailContent").innerHTML = '<div class="detail-empty">The match score and schedule are available, but ESPN did not provide extra details right now. Try again later.</div>';
+  }
+}
+function detailStatValue(team, candidates) {
+  const stats = team?.statistics || team?.stats || [];
+  for (const candidate of candidates) {
+    const found = Array.isArray(stats) ? stats.find(x => String(x.name || x.abbreviation || "").toLowerCase() === candidate.toLowerCase()) : stats[candidate];
+    if (found !== undefined) return Array.isArray(stats) ? (found.displayValue ?? found.value ?? found.display ?? "—") : (found.displayValue ?? found.value ?? found);
+  }
+  return "—";
+}
+function renderMatchDetailTab() {
+  const root = document.getElementById("detailContent");
+  const data = activeDetailPayload || {};
+  const competition = data.header?.competitions?.[0] || data.header?.competitions?.[0] || {};
+  const competitors = competition.competitors || [];
+  const home = competitors.find(c => c.homeAway === "home") || {};
+  const away = competitors.find(c => c.homeAway === "away") || {};
+  if (activeDetailTab === "statistics") {
+    const box = data.boxscore || {};
+    const teams = box.teams || [];
+    const h = teams.find(t => t.homeAway === "home") || teams[0] || {};
+    const a = teams.find(t => t.homeAway === "away") || teams[1] || {};
+    const defs = [
+      ["Possession", ["possessionPct","possession"]],
+      ["Shots", ["totalShots","shots"]],
+      ["Shots on target", ["shotsOnTarget","shotsOnGoal"]],
+      ["Corners", ["wonCorners","corners"]],
+      ["Fouls", ["foulsCommitted","fouls"]],
+      ["Yellow cards", ["yellowCards"]],
+      ["Red cards", ["redCards"]]
+    ];
+    const rows = defs.map(([label, keys]) => {
+      const hv = detailStatValue(h, keys), av = detailStatValue(a, keys);
+      if (hv === "—" && av === "—") return "";
+      const hn = parseFloat(hv), an = parseFloat(av), total = (Number.isFinite(hn)?hn:0)+(Number.isFinite(an)?an:0);
+      const hp = total ? (Number.isFinite(hn)?hn:0)/total*100 : 50;
+      return `<div class="detail-stat"><div><div class="detail-stat-values"><span>${detailText(hv,"—")}</span></div></div><div><div class="detail-stat-label">${escapeHTML(label)}</div><div class="detail-stat-bar"><span style="width:${hp}%"></span><span style="width:${100-hp}%"></span></div></div><div><div class="detail-stat-values"><span>${detailText(av,"—")}</span></div></div></div>`;
+    }).filter(Boolean).join("");
+    root.innerHTML = rows || '<div class="detail-empty">Match statistics are not available from the data source for this fixture.</div>';
+    return;
+  }
+  if (activeDetailTab === "lineups") {
+    const players = data.boxscore?.players || [];
+    const blocks = players.map(group => {
+      const team = group.team || {};
+      const sections = group.statistics || [];
+      const names = sections.flatMap(section => section.athletes || []).map(p => p.athlete?.displayName || p.displayName || p.athlete?.fullName).filter(Boolean);
+      const distinct = [...new Set(names)];
+      if (!distinct.length) return "";
+      return `<div class="detail-lineup"><h4>${detailText(team.displayName || team.name, "Team")}</h4><ol>${distinct.map(n=>`<li>${escapeHTML(n)}</li>`).join("")}</ol></div>`;
+    }).filter(Boolean).join("");
+    root.innerHTML = blocks ? `<div class="detail-lineups">${blocks}</div>` : '<div class="detail-empty">Lineups are not available for this match yet. They may appear closer to kick-off or after the match starts.</div>';
+    return;
+  }
+  const plays = data.plays || data.commentary?.items || [];
+  const events = plays.map(p => {
+    const clock = p.clock?.displayValue || p.time?.displayValue || p.clock || "";
+    const text = p.text || p.shortText || p.type?.text || p.type?.name || "";
+    if (!text) return "";
+    return `<div class="detail-event"><time>${detailText(clock,"•")}</time><span>${escapeHTML(text)}</span></div>`;
+  }).filter(Boolean).slice(-30).reverse().join("");
+  const venue = competition.venue?.fullName || competition.venue?.address?.city || activeDetailMatch?.venue;
+  const officials = (competition.officials || []).map(o => o.fullName || o.displayName).filter(Boolean).join(", ");
+  const meta = [
+    `<div class="detail-event"><time>DATE</time><span>${detailText(activeDetailMatch?.time)}</span></div>`,
+    `<div class="detail-event"><time>VENUE</time><span>${detailText(venue,"Venue not listed")}</span></div>`,
+    officials ? `<div class="detail-event"><time>OFFICIAL</time><span>${escapeHTML(officials)}</span></div>` : ""
+  ].join("");
+  root.innerHTML = `<div class="detail-event-list">${events || '<div class="detail-empty">No event timeline is available for this match yet.</div>'}${meta}</div>`;
+}
+document.querySelectorAll("[data-detail-tab]").forEach(button => button.addEventListener("click", () => {
+  activeDetailTab = button.dataset.detailTab;
+  document.querySelectorAll(".detail-tab").forEach(b => b.classList.toggle("active", b === button));
+  renderMatchDetailTab();
+}));
+document.getElementById("closeMatchModal").addEventListener("click", closeMatchDetails);
+matchModal.querySelectorAll("[data-close-match]").forEach(el => el.addEventListener("click", closeMatchDetails));
+document.addEventListener("keydown", event => { if (event.key === "Escape" && !matchModal.hidden) closeMatchDetails(); });
+
 async function loadStandings(key) {
   activeLeague = key;
   const conf = leagueConfig[key];
