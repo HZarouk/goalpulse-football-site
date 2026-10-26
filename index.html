@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="demo-banner"><span class="pulse-dot"></span> DEMO MODE <span>Sample data for layout testing — not live scores.</span></div>
+  <div class="demo-banner"><span class="pulse-dot"></span> LIVE DATA TEST <span>Scores, fixtures & supported league tables load online; Botola coverage is not yet connected.</span></div>
   <header class="topbar">
     <a class="brand" href="#" aria-label="GoalPulse home"><span class="brand-mark">G<span>+</span></span><span>GOAL<span class="brand-light">PULSE</span></span></a>
     <nav class="desktop-nav" aria-label="Main navigation">
@@ -41,9 +41,9 @@
 
     <section class="section matches-section" id="matches">
       <div class="section-heading"><div><div class="eyebrow">ON THE RADAR</div><h2>Match centre<span class="green-dot">.</span></h2><p class="section-sub">A quick view of the game calendar. Demo fixtures are clearly labelled.</p></div><a class="text-link" href="#leagues">Explore leagues <span>→</span></a></div>
-      <div class="match-controls"><div class="segmented" role="group" aria-label="Filter fixtures"><button class="segment active" data-filter="all">All matches</button><button class="segment" data-filter="international">International</button><button class="segment" data-filter="morocco">Morocco</button></div><div class="date-chip">◷ <span>Upcoming · sample</span></div></div>
+      <div class="match-controls"><div class="segmented" role="group" aria-label="Filter fixtures"><button class="segment active" data-filter="all">All matches</button><button class="segment" data-filter="international">International</button><button class="segment" data-filter="morocco">Morocco</button></div><div class="date-chip" id="dataStatus">◷ <span>Connecting to football data…</span></div></div>
       <div class="match-grid" id="matchGrid"></div>
-      <p class="disclaimer">Demo data only. Match dates, scores and team details are illustrative and are not live or verified.</p>
+      <p class="disclaimer" id="matchDisclaimer">Connecting to the online football data source. Data availability depends on league coverage and the provider.</p>
     </section>
 
     <section class="section leagues-section" id="leagues">
@@ -55,7 +55,7 @@
           <button class="league-select" data-league="botola"><span class="league-icon green">BP</span><span><strong>Botola Pro</strong><small>Morocco</small></span><span class="chevron">↗</span></button>
           <button class="league-select" data-league="ucl"><span class="league-icon blue">UCL</span><span><strong>Champions League</strong><small>Europe</small></span><span class="chevron">↗</span></button>
         </div>
-        <div class="table-card"><div class="table-top"><div><span class="mini-label">LEAGUE STANDINGS</span><h3 id="tableTitle">Premier League</h3></div><span class="table-season">DEMO TABLE</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Club</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="standingsBody"></tbody></table></div><div class="table-footer"><span>Illustrative data for interface testing</span><span>View all ↗</span></div></div>
+        <div class="table-card"><div class="table-top"><div><span class="mini-label">ONLINE LEAGUE STANDINGS</span><h3 id="tableTitle">Premier League</h3></div><span class="table-season" id="tableDataBadge">CONNECTING…</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Club</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="standingsBody"></tbody></table></div><div class="table-footer"><span>Illustrative data for interface testing</span><span>View all ↗</span></div></div>
       </div>
     </section>
 
@@ -66,11 +66,11 @@
     </section>
 
     <section class="section news-section" id="news">
-      <div class="section-heading"><div><div class="eyebrow">BEYOND THE SCORELINE</div><h2>Stories with a point<span class="green-dot">.</span></h2><p class="section-sub">Editorial cards are placeholders to demonstrate the final layout.</p></div><a class="text-link" href="#newsletter">Get the next story <span>→</span></a></div>
+      <div class="section-heading"><div><div class="eyebrow">BEYOND THE SCORELINE</div><h2>Latest football stories<span class="green-dot">.</span></h2><p class="section-sub" id="newsStatus">Loading headlines from the online source…</p></div><a class="text-link" href="#newsletter">Get the next story <span>→</span></a></div>
       <div class="news-grid" id="newsGrid"></div>
     </section>
 
-    <section class="newsletter" id="newsletter"><div><div class="eyebrow">THE WEEKLY WHISTLE</div><h2>Stay close to the game.</h2><p>A future newsletter signup area. No email is collected in this demo.</p></div><form id="newsletterForm"><label class="sr-only" for="emailInput">Email address</label><input type="email" id="emailInput" placeholder="Your email address" required><button class="button" type="submit">Coming soon <span>↗</span></button></form><div class="newsletter-note" id="newsletterNote" aria-live="polite"></div></section>
+    <section class="newsletter" id="newsletter"><div><div class="eyebrow">THE WEEKLY WHISTLE</div><h2>Stay close to the game.</h2><p>Newsletter signup is a visual preview only. No email is collected or sent yet.</p></div><form id="newsletterForm"><label class="sr-only" for="emailInput">Email address</label><input type="email" id="emailInput" placeholder="Your email address" required><button class="button" type="submit">Coming soon <span>↗</span></button></form><div class="newsletter-note" id="newsletterNote" aria-live="polite"></div></section>
   </main>
   <footer class="footer"><a class="brand" href="#"><span class="brand-mark">G<span>+</span></span><span>GOAL<span class="brand-light">PULSE</span></span></a><p>Independent football concept · Built for the global game.</p><div class="footer-links"><a href="#matches">Matches</a><a href="#leagues">Leagues</a><a href="#news">Stories</a><a href="#morocco">Morocco</a></div><small>© <span id="year"></span> GoalPulse. Demo project — no live data connected.</small></footer>
   <script src="script.js"></script>

@@ -1,45 +1,33 @@
-# GoalPulse — Football Website Demo
+# GoalPulse — Online Football Website Test
 
-A responsive, static football website concept built with HTML, CSS and vanilla JavaScript. It is designed to be tested free on GitHub Pages before purchasing a domain.
+This is the online-data test build of GoalPulse. It is a static HTML/CSS/JavaScript site suitable for GitHub Pages.
 
-## What is included
-- Responsive home page (desktop and mobile)
-- Match-centre cards with filters: all / international / Morocco
-- Interactive sample league tables (Premier League, La Liga, Botola Pro, Champions League)
-- Editorial story cards
-- Search across sample fixtures and stories
-- Morocco spotlight section
-- Demo newsletter form (does not collect or send email)
-- No external libraries, build tools, or API keys required
+## Online data in this build
+- Match scoreboards: ESPN public JSON endpoints for Premier League, La Liga, Champions League, Ligue 1, Bundesliga and Serie A.
+- League standings: ESPN endpoint for the selected supported competition.
+- Headlines: ESPN online headlines for Premier League and Champions League.
+- Refresh: scoreboards every 5 minutes; standings every 15 minutes.
+- Botola Pro: not connected yet. The UI clearly says so rather than showing fake fixtures or tables.
 
-## Important: demo data
-This project intentionally uses illustrative fixtures and sample table rows to test the design and interactions. **They are not current, live, verified scores or standings.** Keep the demo banner visible until a real, permitted data source is connected. Some sample international standings are illustrative examples and should not be published as current data.
+## Important limitations
+ESPN's public endpoints used here are undocumented and not guaranteed as a stable developer API. They may change or fail, and competition coverage can vary. Review applicable terms and rights before using this data commercially. For a production site, choose a licensed provider and confirm Botola Pro coverage. Do not present this as official ESPN partnership.
+The site is static, so there is no private backend. Never put secret API keys in public JavaScript. If using a provider requiring a key, proxy requests through a serverless/backend service with the key stored as a secret.
 
 ## Test locally
-1. Download and unzip the project.
-2. Open `index.html` in Chrome, Firefox, or Edge.
-3. Test the nav links, search button, fixture filters, and league selectors.
-4. Resize the browser or use mobile device emulation to test responsive layout.
+Open `index.html` in a browser with internet access. Some browsers may limit `fetch` from local files; if so, test after publishing on GitHub Pages.
 
-## Publish for free with GitHub Pages
-1. Sign in to GitHub and create a new **public** repository, e.g. `goalpulse-football-site`.
-2. Upload the files and folders from this project. `index.html`, `styles.css`, `script.js`, and `assets/` must be in the repository root.
-3. In the repository, open **Settings → Pages**.
-4. Under **Build and deployment**, choose **Deploy from a branch**.
-5. Select branch `main` and folder `/ (root)`, then click **Save**.
-6. Wait for the published URL shown in Settings → Pages. It will look like `https://YOUR-USERNAME.github.io/goalpulse-football-site/`.
-7. Open the URL on desktop and mobile. GitHub may take a few minutes to publish.
+## Publish/update on GitHub Pages
+1. Extract the ZIP.
+2. Open your existing repository: `goalpulse-football-site`.
+3. Upload/replace `index.html`, `styles.css`, `script.js`, `README.md` and `assets/favicon.svg`.
+4. Commit the changes to the `main` branch.
+5. Wait for GitHub Pages to redeploy, then hard-refresh the live site with Ctrl+F5.
+6. Test matches, standings, news and mobile layout.
 
-## Before launch / monetization
-- Connect a reliable football data API after reviewing coverage, rate limits, attribution rules, and commercial-use terms. Never put a secret API key in public JavaScript.
-- Replace all sample data and placeholder stories with verified fixtures and original content.
-- Add About, Contact, Privacy Policy, Terms, and editorial/source notes.
-- Configure analytics and Search Console if desired.
-- AdSense approval is not guaranteed. Apply only when the site has useful original content and meets Google's current policies.
-- For automatic live data, use a secure backend/serverless function or a trusted provider's supported public integration rather than exposing secret credentials in client-side code.
-
-## Files
-- `index.html` — page structure and metadata
-- `styles.css` — visual design and responsive styling
-- `script.js` — demo fixtures, tables, search and interactions
-- `assets/favicon.svg` — simple GoalPulse icon
+## Current status
+- Website UI: ready for test
+- Online fixtures: connected to public ESPN endpoints
+- Online standings: connected for supported competitions
+- Online headlines: connected for Premier League and Champions League
+- Botola Pro data: still requires a provider with verified coverage
+- Newsletter, user accounts, subscriptions and ad monetization: not connected
