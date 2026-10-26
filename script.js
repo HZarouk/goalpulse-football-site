@@ -39,12 +39,30 @@ let cachedMatches = [];
 let activeLeague = "premier";
 const matchDateInput = document.getElementById("matchDate");
 const competitionFilter = document.getElementById("competitionFilter");
-Object.entries(leagueConfig).filter(([key, conf]) => conf.code).forEach(([key, conf]) => {
-  const option = document.createElement("option");
-  option.value = key;
-  option.textContent = conf.title;
-  competitionFilter.appendChild(option);
-});
+const regionLabels = { europe: "Europe", americas: "Americas", asia: "Asia" };
+const leagueColors = ["purple", "red", "blue", "green"];
+function renderLeagueChoices() {
+  const list = document.getElementById("leagueList");
+  list.innerHTML = "";
+  Object.entries(leagueConfig).forEach(([key, conf], index) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = conf.title;
+    competitionFilter.appendChild(option);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `league-select${key === activeLeague ? " selected" : ""}`;
+    button.dataset.league = key;
+    const code = conf.title === "Champions League" ? "UCL" : conf.title.split(/\s+/).map(w => w[0]).join("").slice(0,3).toUpperCase();
+    button.innerHTML = `<span class="league-icon ${leagueColors[index % leagueColors.length]}">${code}</span><span><strong>${conf.title}</strong><small>${regionLabels[conf.region] || conf.region}</small></span><span class="chevron">↗</span>`;
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".league-select").forEach(b => b.classList.remove("selected"));
+      button.classList.add("selected");
+      loadStandings(key);
+    });
+    list.appendChild(button);
+  });
+}
 competitionFilter.addEventListener("change", () => {
   currentCompetition = competitionFilter.value;
   renderMatches();
@@ -54,6 +72,9 @@ function dateInputValue(date) { return `${date.getFullYear()}-${String(date.getM
 function selectedDateKey() { return localDateKey(new Date(`${matchDateInput.value}T12:00:00`)); }
 function changeSelectedDate(days) { const d = new Date(`${matchDateInput.value}T12:00:00`); d.setDate(d.getDate()+days); matchDateInput.value = dateInputValue(d); loadScoreboards(); }
 
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
 function safeText(value, fallback = "TBC") {
   return value === null || value === undefined || value === "" ? fallback : String(value);
 }
@@ -188,7 +209,11 @@ async function loadNews() {
   newsStatus.textContent = "Loading latest headlines from ESPN…";
   const sources = [
     { code: "eng.1", label: "Premier League" },
-    { code: "uefa.champions", label: "Champions League" }
+    { code: "uefa.champions", label: "Champions League" },
+    { code: "esp.1", label: "La Liga" },
+    { code: "usa.1", label: "MLS" },
+    { code: "bra.1", label: "Brazil Serie A" },
+    { code: "jpn.1", label: "J1 League" }
   ];
   try {
     const responses = await Promise.allSettled(sources.map(s => getJSON(`${ESPN}/${s.code}/news?limit=6`)));
@@ -197,13 +222,15 @@ async function loadNews() {
       if (r.status !== "fulfilled") return;
       (r.value.articles || []).forEach(a => articles.push({ ...a, sourceLabel: sources[i].label }));
     });
-    const unique = [...new Map(articles.filter(a => a.headline).map(a => [a.headline, a])).values()].slice(0, 6);
+    const unique = [...new Map(articles.filter(a => a.headline).map(a => [a.headline, a])).values()]
+      .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0))
+      .slice(0, 9);
     if (!unique.length) throw new Error("No headlines");
     document.getElementById("newsGrid").innerHTML = unique.map((a, i) => {
       const link = a.links?.web?.href || a.links?.api?.news?.href || "#";
       const image = a.images?.[0]?.url;
       const safeLink = /^https?:\/\//i.test(link) ? link : "#";
-      return `<article class="news-card"><div class="news-art" ${image ? `style="background-image:linear-gradient(0deg,#111b 0%,#1114 100%),url('${image.replace(/'/g,"%27")}');background-size:cover;background-position:center` : ""}><span class="art-number">ONLINE / ${String(i+1).padStart(2,"0")}</span><span class="art-icon">${image ? "" : "⚽"}</span></div><div class="news-content"><span class="news-category">${a.sourceLabel.toUpperCase()}</span><h3>${a.headline}</h3><p>${safeText(a.description, "Open the source for the full story.")}</p><div class="news-meta"><span>${safeText(a.published, "Latest")}</span><a href="${safeLink}" target="_blank" rel="noopener noreferrer">Read source ↗</a></div></div></article>`;
+      return `<article class="news-card"><div class="news-art" ${image ? `style="background-image:linear-gradient(0deg,#111b 0%,#1114 100%),url('${image.replace(/'/g,"%27")}');background-size:cover;background-position:center` : ""}><span class="art-number">ONLINE / ${String(i+1).padStart(2,"0")}</span><span class="art-icon">${image ? "" : "⚽"}</span></div><div class="news-content"><span class="news-category">${escapeHTML(a.sourceLabel.toUpperCase())}</span><h3>${escapeHTML(a.headline)}</h3><p>${escapeHTML(safeText(a.description, "Open the source for the full story."))}</p><div class="news-meta"><span>${escapeHTML(safeText(a.published, "Latest"))}</span><a href="${safeLink}" target="_blank" rel="noopener noreferrer">Read source ↗</a></div></div></article>`;
     }).join("");
     newsStatus.textContent = "Headlines from ESPN. Open each source for the full story.";
   } catch (e) {
@@ -217,11 +244,6 @@ document.querySelectorAll(".segment").forEach(btn => btn.addEventListener("click
   btn.classList.add("active");
   currentFilter = btn.dataset.filter;
   renderMatches();
-}));
-document.querySelectorAll(".league-select").forEach(btn => btn.addEventListener("click", () => {
-  document.querySelectorAll(".league-select").forEach(b => b.classList.remove("selected"));
-  btn.classList.add("selected");
-  loadStandings(btn.dataset.league);
 }));
 document.getElementById("searchToggle").addEventListener("click", () => {
   document.getElementById("searchStrip").classList.toggle("open");
@@ -245,6 +267,7 @@ document.getElementById("prevDate").addEventListener("click", () => changeSelect
 document.getElementById("nextDate").addEventListener("click", () => changeSelectedDate(1));
 document.getElementById("todayDate").addEventListener("click", () => { matchDateInput.value = dateInputValue(new Date()); loadScoreboards(); });
 matchDateInput.addEventListener("change", loadScoreboards);
+renderLeagueChoices();
 loadScoreboards();
 loadStandings("premier");
 loadNews();

@@ -49,12 +49,8 @@
     <section class="section leagues-section" id="leagues">
       <div class="section-heading"><div><div class="eyebrow">FOLLOW YOUR COMPETITION</div><h2>Leagues & tables<span class="green-dot">.</span></h2></div><span class="mini-label">ONLINE TABLES · BETA</span></div>
       <div class="league-layout">
-        <div class="league-list" id="leagueList">
-          <button class="league-select selected" data-league="premier"><span class="league-icon purple">PL</span><span><strong>Premier League</strong><small>England</small></span><span class="chevron">↗</span></button>
-          <button class="league-select" data-league="laliga"><span class="league-icon red">LL</span><span><strong>La Liga</strong><small>Spain</small></span><span class="chevron">↗</span></button>
-          <button class="league-select" data-league="ucl"><span class="league-icon blue">UCL</span><span><strong>Champions League</strong><small>Europe</small></span><span class="chevron">↗</span></button>
-          <button class="league-select" data-league="mls"><span class="league-icon green">MLS</span><span><strong>MLS</strong><small>Americas</small></span><span class="chevron">↗</span></button>
-          <button class="league-select" data-league="japan"><span class="league-icon blue">J1</span><span><strong>J1 League</strong><small>Asia</small></span><span class="chevron">↗</span></button>
+        <div class="league-list" id="leagueList" aria-label="Choose a competition">
+          <p class="table-loading">Loading available competitions…</p>
         </div>
         <div class="table-card"><div class="table-top"><div><span class="mini-label">ONLINE LEAGUE STANDINGS</span><h3 id="tableTitle">Premier League</h3></div><span class="table-season" id="tableDataBadge">CONNECTING…</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Club</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="standingsBody"></tbody></table></div><div class="table-footer"><span>Standings depend on online source availability</span><span>View all ↗</span></div></div>
       </div>
