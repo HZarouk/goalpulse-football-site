@@ -16,7 +16,6 @@ const leagueConfig = {
   eredivisie: { title: "Eredivisie", code: "ned.1", region: "europe" },
   portugal: { title: "Primeira Liga", code: "por.1", region: "europe" },
   mls: { title: "MLS", code: "usa.1", region: "americas" },
-  saudi: { title: "Saudi Pro League", code: "sau.1", region: "asia" },
   turkey: { title: "Turkish Super Lig", code: "tur.1", region: "europe" },
   scotland: { title: "Scottish Premiership", code: "sco.1", region: "europe" },
   europa: { title: "Europa League", code: "uefa.europa", region: "europe" },

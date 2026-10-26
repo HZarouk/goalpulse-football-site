@@ -18,3 +18,6 @@ The site uses ESPN public, undocumented JSON endpoints. These are not a guarante
 3. Commit changes to the branch used by GitHub Pages.
 4. Wait for deployment, then hard refresh with Ctrl+Shift+R.
 5. Test the filters and check DevTools → Network → Fetch/XHR for failed requests.
+
+
+Troubleshooting update (2026-10-26): Removed Saudi Pro League (`sau.1`) from the competition list because the live browser Network capture showed its ESPN scoreboard request returning HTTP 400. This is an isolated league endpoint failure; the other successful scoreboard requests, standings, and news should remain available. Japan J1 and Australia A-League remain listed as Asia competitions. ESPN endpoints are undocumented and coverage may vary.
