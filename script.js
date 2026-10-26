@@ -145,12 +145,17 @@ async function loadStandings(key) {
   tableDataBadge.textContent = "LOADING…";
   standingsBody.innerHTML = `<tr><td colspan="7">Loading online standings…</td></tr>`;
   try {
-    const data = await getJSON(`${ESPN}/${conf.code}/standings`);
-    const groups = data.children || [];
-    let entries = data.standings?.entries || [];
-    if (!entries.length && groups.length) entries = groups.flatMap(g => g.standings?.entries || []);
-    if (!entries.length && data.standings?.entries) entries = data.standings.entries;
-    if (!entries.length) throw new Error("No standings available");
+    const data = await getJSON(`https://site.api.espn.com/apis/v2/sports/soccer/${conf.code}/standings`);
+    const groups = Array.isArray(data.children) ? data.children : [];
+    let entries = Array.isArray(data.standings?.entries) ? data.standings.entries : [];
+    if (!entries.length && groups.length) {
+      entries = groups.flatMap(group => {
+        if (Array.isArray(group.standings?.entries)) return group.standings.entries;
+        if (Array.isArray(group.children)) return group.children.flatMap(child => child.standings?.entries || []);
+        return [];
+      });
+    }
+    if (!entries.length) throw new Error("No standings available in the provider response");
     const rows = entries.slice(0, 10).map((entry, i) => {
       const stats = {};
       (entry.stats || []).forEach(s => { stats[s.name] = s.displayValue ?? s.value; });

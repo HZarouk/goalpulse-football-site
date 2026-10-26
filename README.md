@@ -31,3 +31,7 @@ Open `index.html` in a browser with internet access. Some browsers may limit `fe
 - Online headlines: connected for Premier League and Champions League
 - Botola Pro data: still requires a provider with verified coverage
 - Newsletter, user accounts, subscriptions and ad monetization: not connected
+
+
+### Standings endpoint fix (October 2026)
+The standings request uses ESPN's `/apis/v2/sports/soccer/{league}/standings` route. The `/apis/site/v2/` route can return an empty response for soccer standings. This is an undocumented public endpoint, so availability and coverage are not guaranteed. Botola Pro remains marked as not connected until a verified provider covering the Moroccan league is configured.
