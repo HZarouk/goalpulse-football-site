@@ -25,11 +25,3 @@
 .competition-filter select:focus{border-color:var(--green)}
 @media(max-width:900px){.match-controls-wrap{flex-wrap:wrap}.competition-filter{order:2}.date-picker{order:3}.date-chip{order:4}}
 @media(max-width:560px){.competition-filter{width:100%;justify-content:space-between}.competition-filter select{flex:1;max-width:none}.date-picker{flex-wrap:wrap}}
-
-/* GoalPulse competition select: match the dark UI */
-.competition-filter{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:11px;font-weight:700;white-space:nowrap}
-.competition-filter select{max-width:220px;min-width:170px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:12px 34px 12px 13px;outline:none;appearance:none;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,var(--green) 50%),linear-gradient(135deg,var(--green) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
-.competition-filter select:focus{border-color:var(--green)}
-.competition-filter select option{background:#171e18;color:#f4f6ef}
-@media(max-width:900px){.match-controls-wrap{flex-wrap:wrap}.competition-filter{order:2}.date-picker{order:3}.date-chip{order:4}}
-@media(max-width:560px){.competition-filter{width:100%;justify-content:space-between}.competition-filter select{flex:1;max-width:none}.date-picker{flex-wrap:wrap}}
