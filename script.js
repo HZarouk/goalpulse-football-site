@@ -1,30 +1,31 @@
 /*
- GoalPulse online data integration.
- Scoreboards, standings and headlines use ESPN's public, undocumented JSON endpoints.
- They require no API key, but are not a guaranteed/official developer API and may change.
- ESPN coverage does not include every competition; Botola Pro is left clearly unconnected.
+ GoalPulse — API-Football integration.
+ Browser calls a Cloudflare Worker proxy. The API key must be stored as a Worker secret,
+ never in this public JavaScript file. Configure API_BASE after deploying worker.js.
 */
-const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer";
+const API_BASE = "PASTE_YOUR_CLOUDFLARE_WORKER_URL_HERE";
+const ESPN_NEWS = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const leagueConfig = {
-  premier: { title: "Premier League", code: "eng.1", region: "international" },
-  laliga: { title: "La Liga", code: "esp.1", region: "international" },
-  botola: { title: "Botola Pro", code: null, region: "morocco" },
-  ucl: { title: "Champions League", code: "uefa.champions", region: "international" },
-  ligue1: { title: "Ligue 1", code: "fra.1", region: "international" },
-  bundesliga: { title: "Bundesliga", code: "ger.1", region: "international" },
-  seriea: { title: "Serie A", code: "ita.1", region: "international" },
-  eredivisie: { title: "Eredivisie", code: "ned.1", region: "international" },
-  portugal: { title: "Primeira Liga", code: "por.1", region: "international" },
-  mls: { title: "MLS", code: "usa.1", region: "international" },
-  saudi: { title: "Saudi Pro League", code: "sau.1", region: "international" },
-  turkey: { title: "Turkish Super Lig", code: "tur.1", region: "international" },
-  scotland: { title: "Scottish Premiership", code: "sco.1", region: "international" },
-  europa: { title: "Europa League", code: "uefa.europa", region: "international" },
-  brazil: { title: "Brazil Serie A", code: "bra.1", region: "international" },
-  argentina: { title: "Argentina Primera División", code: "arg.1", region: "international" },
-  mexico: { title: "Liga MX", code: "mex.1", region: "international" },
-  japan: { title: "J1 League", code: "jpn.1", region: "international" },
-  australia: { title: "A-League", code: "aus.1", region: "international" }
+  premier: { title: "Premier League", apiId: 39, code: "eng.1", region: "international", season: 2026 },
+  laliga: { title: "La Liga", apiId: 140, code: "esp.1", region: "international", season: 2026 },
+  botola: { title: "Botola Pro", apiId: 200, code: null, region: "morocco", season: 2026 },
+  botola2: { title: "Botola 2", apiId: 201, code: null, region: "morocco", season: 2026 },
+  ucl: { title: "Champions League", apiId: 2, code: "uefa.champions", region: "international", season: 2026 },
+  ligue1: { title: "Ligue 1", apiId: 61, code: "fra.1", region: "international", season: 2026 },
+  bundesliga: { title: "Bundesliga", apiId: 78, code: "ger.1", region: "international", season: 2026 },
+  seriea: { title: "Serie A", apiId: 135, code: "ita.1", region: "international", season: 2026 },
+  eredivisie: { title: "Eredivisie", apiId: 88, code: "ned.1", region: "international", season: 2026 },
+  portugal: { title: "Primeira Liga", apiId: 94, code: "por.1", region: "international", season: 2026 },
+  mls: { title: "MLS", apiId: 253, code: "usa.1", region: "international", season: 2026 },
+  saudi: { title: "Saudi Pro League", apiId: 307, code: "sau.1", region: "international", season: 2026 },
+  turkey: { title: "Turkish Super Lig", apiId: 203, code: "tur.1", region: "international", season: 2026 },
+  scotland: { title: "Scottish Premiership", apiId: 179, code: "sco.1", region: "international", season: 2026 },
+  europa: { title: "Europa League", apiId: 3, code: "uefa.europa", region: "international", season: 2026 },
+  brazil: { title: "Brazil Serie A", apiId: 71, code: "bra.1", region: "international", season: 2026 },
+  argentina: { title: "Argentina Primera División", apiId: 128, code: "arg.1", region: "international", season: 2026 },
+  mexico: { title: "Liga MX", apiId: 262, code: "mex.1", region: "international", season: 2026 },
+  japan: { title: "J1 League", apiId: 98, code: "jpn.1", region: "international", season: 2026 },
+  australia: { title: "A-League", apiId: 188, code: "aus.1", region: "international", season: 2026 }
 };
 const matchGrid = document.getElementById("matchGrid");
 const dataStatus = document.getElementById("dataStatus");
@@ -39,7 +40,7 @@ let cachedMatches = [];
 let activeLeague = "premier";
 const matchDateInput = document.getElementById("matchDate");
 const competitionFilter = document.getElementById("competitionFilter");
-Object.entries(leagueConfig).filter(([key, conf]) => conf.code).forEach(([key, conf]) => {
+Object.entries(leagueConfig).filter(([key, conf]) => conf.apiId).forEach(([key, conf]) => {
   const option = document.createElement("option");
   option.value = key;
   option.textContent = conf.title;
@@ -70,63 +71,63 @@ function statusLabel(event) {
   if (state === "post") return type.shortDetail || "FT";
   return type.shortDetail || formatKickoff(event.date);
 }
-function eventToMatch(event, leagueName, region) {
-  const comp = event.competitions?.[0];
-  const competitors = comp?.competitors || [];
-  const home = competitors.find(c => c.homeAway === "home") || competitors[0];
-  const away = competitors.find(c => c.homeAway === "away") || competitors[1];
-  if (!home || !away) return null;
-  const state = event.status?.type?.state;
-  const live = state === "in";
-  const done = state === "post";
-  const hs = home.score;
-  const as = away.score;
+function eventToMatch(item) {
+  const fixture = item.fixture || {};
+  const teams = item.teams || {};
+  const goals = item.goals || {};
+  const statusCode = fixture.status?.short || "NS";
+  const liveCodes = ["1H","HT","2H","ET","BT","P","LIVE"];
+  const doneCodes = ["FT","AET","PEN"];
+  const live = liveCodes.includes(statusCode);
+  const done = doneCodes.includes(statusCode);
+  const homeScore = goals.home;
+  const awayScore = goals.away;
   let score = "VS";
-  if (hs !== undefined && as !== undefined && (live || done)) score = `${as} – ${hs}`;
-  const status = live ? "LIVE" : done ? "FULL TIME" : "UPCOMING";
+  if (homeScore !== null && homeScore !== undefined && awayScore !== null && awayScore !== undefined && (live || done)) {
+    score = `${homeScore} – ${awayScore}`;
+  }
+  const conf = Object.values(leagueConfig).find(c => c.apiId === item.league?.id);
+  const leagueName = item.league?.name || conf?.title || "Football";
+  const region = conf?.region || (item.league?.country === "Morocco" ? "morocco" : "international");
+  const state = live ? "LIVE" : done ? "FULL TIME" : "UPCOMING";
+  const kickoff = fixture.date;
   return {
-    league: leagueName,
-    competitionKey: Object.keys(leagueConfig).find(key => leagueConfig[key].title === leagueName) || "unknown",
-    region,
-    time: formatKickoff(event.date),
-    home: safeText(home.team?.displayName, "Home"),
-    abbrH: safeText(home.team?.abbreviation, "H"),
-    away: safeText(away.team?.displayName, "Away"),
-    abbrA: safeText(away.team?.abbreviation, "A"),
-    score,
-    status,
-    venue: safeText(comp?.venue?.fullName, "Match details"),
-    sortDate: new Date(event.date || 0).getTime(),
-    searchText: `${leagueName} ${home.team?.displayName || ""} ${away.team?.displayName || ""}`
+    league: leagueName, competitionKey: Object.keys(leagueConfig).find(key => leagueConfig[key].apiId === item.league?.id) || "unknown",
+    region, time: formatKickoff(kickoff),
+    home: safeText(teams.home?.name, "Home"), abbrH: safeText(teams.home?.name?.slice(0,3)?.toUpperCase(), "H"),
+    away: safeText(teams.away?.name, "Away"), abbrA: safeText(teams.away?.name?.slice(0,3)?.toUpperCase(), "A"),
+    score, status: state, venue: safeText(fixture.venue?.name, item.league?.country || "Match details"),
+    sortDate: new Date(kickoff || 0).getTime(),
+    searchText: `${leagueName} ${teams.home?.name || ""} ${teams.away?.name || ""}`
   };
 }
 async function getJSON(url) {
+  if ((url.startsWith(API_BASE)) && API_BASE.includes("PASTE_YOUR_CLOUDFLARE_WORKER_URL_HERE")) {
+    throw new Error("API proxy is not configured yet");
+  }
   const res = await fetch(url, { headers: { "Accept": "application/json" } });
   if (!res.ok) throw new Error(`Data provider returned ${res.status}`);
-  return res.json();
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
 }
 async function loadScoreboards() {
-  const dateKey = selectedDateKey();
-  const selectedLabel = new Date(`${matchDateInput.value}T12:00:00`).toLocaleDateString(undefined, {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+  const dateKey = matchDateInput.value;
+  const selectedLabel = new Date(`${dateKey}T12:00:00`).toLocaleDateString(undefined, {weekday:"long", day:"numeric", month:"long", year:"numeric"});
   dataStatus.innerHTML = `◷ <span>Loading ${selectedLabel}…</span>`;
-  const configs = Object.values(leagueConfig).filter(c => c.code);
-  const results = await Promise.allSettled(configs.map(async c => {
-    const data = await getJSON(`${ESPN}/${c.code}/scoreboard?dates=${dateKey}`);
-    return (data.events || []).map(event => eventToMatch(event, c.title, c.region)).filter(Boolean);
-  }));
-  const all = results.flatMap(r => r.status === "fulfilled" ? r.value : []);
-  cachedMatches = all.sort((a,b) => {
-    const aLive = a.status === "LIVE" ? 0 : a.status === "UPCOMING" ? 1 : 2;
-    const bLive = b.status === "LIVE" ? 0 : b.status === "UPCOMING" ? 1 : 2;
-    return aLive - bLive || a.sortDate - b.sortDate;
-  });
-  const succeeded = results.filter(r => r.status === "fulfilled").length;
-  if (succeeded) {
+  try {
+    const data = await getJSON(`${API_BASE}/fixtures?date=${encodeURIComponent(dateKey)}&timezone=Africa%2FCasablanca`);
+    const response = Array.isArray(data.response) ? data.response : [];
+    cachedMatches = response.map(eventToMatch).sort((a,b) => {
+      const rank = s => s === "LIVE" ? 0 : s === "UPCOMING" ? 1 : 2;
+      return rank(a.status) - rank(b.status) || a.sortDate - b.sortDate;
+    });
     dataStatus.innerHTML = `◷ <span>Online · ${selectedLabel}</span>`;
-    matchDisclaimer.textContent = `Showing fixtures and results for ${selectedLabel}. Scores and fixtures are loaded from ESPN public data endpoints; coverage may vary. Botola Pro is not connected yet.`;
-  } else {
-    dataStatus.innerHTML = "◷ <span>Data source unavailable</span>";
-    matchDisclaimer.textContent = "Could not load online fixtures right now. Check your connection and refresh the page. Botola Pro data still needs a separate source.";
+    matchDisclaimer.textContent = `Fixtures and results supplied by API-Football for ${selectedLabel}. Coverage and live-score availability vary by competition.`;
+  } catch (err) {
+    cachedMatches = [];
+    dataStatus.innerHTML = "◷ <span>API setup required</span>";
+    matchDisclaimer.textContent = `Football data is not connected yet: ${err.message}. Deploy the Cloudflare Worker and set API_BASE in script.js.`;
   }
   renderMatches();
 }
@@ -162,37 +163,31 @@ async function loadStandings(key) {
   activeLeague = key;
   const conf = leagueConfig[key];
   tableTitle.textContent = conf.title;
-  if (!conf.code) {
-    tableDataBadge.textContent = "NOT CONNECTED";
-    standingsBody.innerHTML = `<tr><td colspan="7" class="empty-table">Botola Pro standings need a dedicated data provider. We are not showing invented table data.</td></tr>`;
+  if (!conf.apiId) {
+    tableDataBadge.textContent = "NOT AVAILABLE";
+    standingsBody.innerHTML = `<tr><td colspan="7" class="empty-table">No verified competition ID is configured for this league.</td></tr>`;
     return;
   }
   tableDataBadge.textContent = "LOADING…";
-  standingsBody.innerHTML = `<tr><td colspan="7">Loading online standings…</td></tr>`;
+  standingsBody.innerHTML = `<tr><td colspan="7">Loading official provider standings…</td></tr>`;
   try {
-    const data = await getJSON(`${ESPN}/${conf.code}/standings`);
-    const groups = data.children || [];
-    let entries = data.standings?.entries || [];
-    if (!entries.length && groups.length) entries = groups.flatMap(g => g.standings?.entries || []);
-    if (!entries.length && data.standings?.entries) entries = data.standings.entries;
-    if (!entries.length) throw new Error("No standings available");
-    const rows = entries.slice(0, 10).map((entry, i) => {
-      const stats = {};
-      (entry.stats || []).forEach(s => { stats[s.name] = s.displayValue ?? s.value; });
-      const team = entry.team || {};
-      const played = stats.gamesPlayed ?? stats.played ?? "—";
-      const wins = stats.wins ?? "—";
-      const draws = stats.ties ?? stats.draws ?? "—";
-      const losses = stats.losses ?? "—";
-      const points = stats.points ?? "—";
-      const initials = safeText(team.abbreviation, team.displayName || "FC").slice(0,3).toUpperCase();
-      return `<tr><td>${i+1}</td><td><span class="club-cell"><span class="club-mini">${initials}</span>${safeText(team.displayName, "Club")}</span></td><td>${played}</td><td>${wins}</td><td>${draws}</td><td>${losses}</td><td>${points}</td></tr>`;
+    const data = await getJSON(`${API_BASE}/standings?league=${conf.apiId}&season=${conf.season}`);
+    const groups = data.response?.[0]?.league?.standings || [];
+    const entries = groups.flat();
+    if (!entries.length) throw new Error("No standings returned for this competition/season");
+    const rows = entries.map((entry, i) => {
+      const played = entry.all?.played ?? "—";
+      const won = entry.all?.win ?? "—";
+      const drawn = entry.all?.draw ?? "—";
+      const lost = entry.all?.lose ?? "—";
+      const points = entry.points ?? "—";
+      return `<tr><td>${entry.rank ?? i+1}</td><td class="club-cell">${safeText(entry.team?.name, "Club")}</td><td>${played}</td><td>${won}</td><td>${drawn}</td><td>${lost}</td><td><strong>${points}</strong></td></tr>`;
     }).join("");
-    standingsBody.innerHTML = rows || `<tr><td colspan="7">Standings not available for this competition right now.</td></tr>`;
-    tableDataBadge.textContent = "ONLINE DATA";
+    tableDataBadge.textContent = "ONLINE";
+    standingsBody.innerHTML = rows;
   } catch (err) {
     tableDataBadge.textContent = "UNAVAILABLE";
-    standingsBody.innerHTML = `<tr><td colspan="7">Could not load this league's standings right now. Try again later.</td></tr>`;
+    standingsBody.innerHTML = `<tr><td colspan="7" class="empty-table">Could not load standings: ${err.message}. Check the API key, season and competition coverage.</td></tr>`;
   }
 }
 async function loadNews() {
@@ -202,7 +197,7 @@ async function loadNews() {
     { code: "uefa.champions", label: "Champions League" }
   ];
   try {
-    const responses = await Promise.allSettled(sources.map(s => getJSON(`${ESPN}/${s.code}/news?limit=6`)));
+    const responses = await Promise.allSettled(sources.map(s => getJSON(`${ESPN_NEWS}/${s.code}/news?limit=6`)));
     const articles = [];
     responses.forEach((r, i) => {
       if (r.status !== "fulfilled") return;
