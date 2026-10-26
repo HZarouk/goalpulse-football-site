@@ -6,6 +6,10 @@
 */
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const ESPN_STANDINGS = "https://site.api.espn.com/apis/v2/sports/soccer";
+
+// Optional Cloudflare Worker proxy. After deploying worker.js, paste its URL here.
+// Example: const ESPN_PROXY = "https://goalpulse-espn-proxy.YOUR-SUBDOMAIN.workers.dev";
+const ESPN_PROXY = "";
 const leagueConfig = {
   premier: { title: "Premier League", code: "eng.1", region: "europe" },
   laliga: { title: "La Liga", code: "esp.1", region: "europe" },
@@ -126,7 +130,12 @@ function eventToMatch(event, leagueName, region) {
   };
 }
 async function getJSON(url) {
-  const res = await fetch(url, { headers: { "Accept": "application/json" } });
+  // Browser-to-ESPN calls can be blocked by CORS. When ESPN_PROXY is configured,
+  // send the ESPN URL through our own Worker proxy instead.
+  const requestURL = ESPN_PROXY
+    ? `${ESPN_PROXY.replace(/\\/$/, "")}/?url=${encodeURIComponent(url)}`
+    : url;
+  const res = await fetch(requestURL, { headers: { "Accept": "application/json" } });
   if (!res.ok) throw new Error(`Data provider returned ${res.status}`);
   return res.json();
 }

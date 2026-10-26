@@ -1,24 +1,36 @@
-# GoalPulse — Phase C: Match Details
+# GoalPulse — CORS fix for standings
 
-This package adds a responsive match-details modal to the current GoalPulse Phase B site.
+The browser console showed a CORS block for ESPN standings. This is not fixable with frontend JavaScript alone. This package adds a small Cloudflare Worker proxy and updates `script.js` to use it once configured.
 
-## New features
-- Click or keyboard-activate any match card to open Match Details.
-- Overview tab: match status, scheduled time, venue, and event timeline when supplied by ESPN.
-- Statistics tab: displays available team statistics only; unavailable values are not fabricated.
-- Lineups tab: displays player data when supplied by the endpoint.
-- Mobile-friendly layout, Escape-to-close, backdrop click, and visible focus styles.
-- Existing fixtures, filters, date controls, standings, news, and page layout are retained.
+## Files
+- `index.html`, `script.js`, `styles.css`: current GoalPulse site files; layout preserved.
+- `worker.js`: Cloudflare Worker proxy, restricted to `https://site.api.espn.com/apis/...`.
+- `README.md`: these instructions.
 
-## Deploy
-1. Download and unzip this package.
-2. In the `goalpulse-football-site` GitHub repository, upload/replace `index.html`, `script.js`, and `styles.css` in the repository root.
-3. Commit the changes and wait for GitHub Pages to deploy.
-4. Open the site and hard-refresh with `Ctrl + Shift + R`.
-5. Click a match card and test Overview, Statistics, Lineups, close button, backdrop click, and Escape key.
+## Step 1 — Deploy the Worker
+1. Sign in to Cloudflare and open **Workers & Pages**.
+2. Create a Worker (for example, `goalpulse-espn-proxy`).
+3. Open its code editor, replace the starter code with the full contents of `worker.js`, and deploy.
+4. Copy the Worker URL, which looks like `https://goalpulse-espn-proxy.<your-subdomain>.workers.dev`.
+5. Test it by opening this URL in a browser (replace `WORKER_URL` with your actual URL):
+   `WORKER_URL/?url=https%3A%2F%2Fsite.api.espn.com%2Fapis%2Fv2%2Fsports%2Fsoccer%2Feng.1%2Fstandings`
+   You should see JSON data, not a CORS error.
 
-## Data limitations
-The site uses ESPN public, undocumented JSON endpoints. These are not a guaranteed official developer API and may change. The endpoint may not provide statistics, lineups, or event timelines for every competition or match. The interface explicitly shows a not-available message when extra data cannot be retrieved; it does not invent match facts.
+## Step 2 — Configure the website
+1. In `script.js`, find:
+   `const ESPN_PROXY = "";`
+2. Replace the empty string with your deployed Worker URL, for example:
+   `const ESPN_PROXY = "https://goalpulse-espn-proxy.<your-subdomain>.workers.dev";`
+   Do not include a trailing slash.
+3. Upload/replace `index.html`, `script.js`, and `styles.css` in the root of the GitHub repository and commit the changes.
+4. Wait for GitHub Pages to deploy, then hard-refresh with `Ctrl + Shift + R`.
 
-## QA note
-JavaScript syntax was checked when packaging. A live browser/device test against the deployed site has not been performed as part of this package. Verify desktop and mobile behavior after deployment.
+## Step 3 — Verify
+- Open DevTools → Network and reload.
+- The standings request should go to your `workers.dev` URL and return 200.
+- The standings table should populate if ESPN returns standings for that competition.
+- If ESPN has no data or changes its undocumented API, the table may still be unavailable; the proxy only addresses browser CORS.
+
+## Important
+- `worker.js` is not automatically executed by GitHub Pages. It must be deployed separately as a Cloudflare Worker.
+- ESPN endpoints are public but undocumented and not guaranteed stable. Do not expose private keys in frontend code (this Worker does not need any).
