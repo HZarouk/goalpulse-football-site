@@ -56,7 +56,7 @@ function normaliseMatch(raw) {
   const awayScore = m.away_score ?? m.score?.away ?? m.goals?.away ?? m.scores?.away;
   const status = m.status_text ?? m.status ?? m.fixture?.status?.short ?? 'Scheduled';
   const time = m.time ?? m.kickoff ?? m.date ?? m.fixture?.date;
-  const league = m.competition?.name ?? m.league?.name ?? m.tournament?.name ?? m.competition_name ?? (currentSelectedLeague !== 'all' ? (LEAGUE_NAMES[currentSelectedLeague] || '') : 'Football');
+  const league = m.competition?.name ?? (typeof m.competition === 'string' ? m.competition : undefined) ?? m.league?.name ?? (typeof m.league === 'string' ? m.league : undefined) ?? m.tournament?.name ?? m.competition_name ?? (currentSelectedLeague !== 'all' ? (LEAGUE_NAMES[currentSelectedLeague] || '') : 'Football');
   const leagueSlug = m.competition?.slug ?? m.competition_slug ?? m.league?.slug ?? '';
   const homeLogo = m.home_logo ?? m.teams?.home?.logo ?? m.homeTeam?.logo ?? '';
   const awayLogo = m.away_logo ?? m.teams?.away?.logo ?? m.awayTeam?.logo ?? '';
@@ -74,6 +74,30 @@ function formatTime(value) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function extractMatchRows(payload) {
+  // Support both documented SportScore envelopes and nested variants.
+  const candidates = [
+    payload, payload?.matches, payload?.fixtures, payload?.results,
+    payload?.data, payload?.data?.matches, payload?.data?.fixtures,
+    payload?.response, payload?.data?.results
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+  return [];
+}
+
+function matchesSelectedLeague(matches, leagueId) {
+  if (!leagueId || leagueId === 'all') return matches;
+  const expected = (LEAGUE_NAMES[leagueId] || '').toLowerCase();
+  const slug = (LEAGUE_SLUGS[leagueId] || '').toLowerCase();
+  return matches.filter(m => {
+    const league = String(m.league || '').toLowerCase();
+    const rawSlug = String(m.leagueSlug || '').toLowerCase();
+    return (expected && league.includes(expected)) || (slug && (rawSlug === slug || league.includes(slug.replace(/-/g, ' '))));
+  });
+}
+
 async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, leagueId = currentSelectedLeague) {
   const container = document.getElementById('matches-container');
   if (!container) return;
@@ -86,8 +110,7 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     } else {
       payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date: dateStr, limit: 200, competition: leagueId !== 'all' ? LEAGUE_SLUGS[leagueId] : undefined });
     }
-    let matches = Array.isArray(payload) ? payload : (payload.matches || payload.fixtures || payload.data?.matches || payload.data?.fixtures || payload.response || []);
-    if (!Array.isArray(matches)) matches = [];
+    let matches = extractMatchRows(payload);
     let normalised = matches.map(normaliseMatch);
     if (isLive) normalised = normalised.filter(isLiveMatch);
     renderMatches(normalised);
@@ -197,30 +220,39 @@ async function fetchHistory() {
   document.getElementById('btn-history')?.classList.add('active');
   container.innerHTML = `<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Chargement de l’historique des 7 derniers jours…</div>`;
   try {
+    // Request each UTC calendar day independently. If a competition slug is
+    // rejected or returns no rows, retry that day without the competition and
+    // filter locally by the competition name returned in each match.
     const dates = Array.from({length: 7}, (_, i) => dateOffset(-(i + 1)));
-    // Fetch one date at a time to avoid bursts against the public API.
-    const responses = [];
+    const collected = [];
     for (const date of dates) {
-      responses.push(await apiGet('/api/v1/fixtures/', {
+      let payload = await apiGet('/api/v1/fixtures/', {
         sport: SPORT, date, limit: 200,
         competition: currentSelectedLeague !== 'all' ? LEAGUE_SLUGS[currentSelectedLeague] : undefined
-      }));
+      });
+      let rows = extractMatchRows(payload);
+      if (!rows.length && currentSelectedLeague !== 'all') {
+        payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date, limit: 200 });
+        rows = extractMatchRows(payload);
+      }
+      const normalised = rows.map(normaliseMatch);
+      collected.push(...matchesSelectedLeague(normalised, currentSelectedLeague));
       await new Promise(resolve => setTimeout(resolve, 250));
     }
     const seen = new Set();
-    const matches = responses.flatMap(payload => {
-      const rows = Array.isArray(payload) ? payload : (payload.matches || payload.fixtures || payload.data?.matches || payload.data?.fixtures || payload.response || payload.data || []);
-      return Array.isArray(rows) ? rows.map(normaliseMatch) : [];
-    }).filter(m => {
+    const matches = collected.filter(m => {
       const key = m.slug || `${m.home}|${m.away}|${m.time}`;
-      if (seen.has(key)) return false; seen.add(key);
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     }).sort((a,b) => new Date(b.time || 0) - new Date(a.time || 0));
     renderMatches(matches);
-    if (!matches.length) container.innerHTML = `<p class="data-message">Aucun résultat historique disponible pour ces 7 jours. Essaie « Tous les Matchs » ou une autre période.</p>`;
+    if (!matches.length) {
+      container.innerHTML = `<p class="data-message">Ma l9inach résultats historiques had simana lhad championnat. Jarrab « Tous les Matchs » bach tchouf résultats dyal ga3 les championnats.</p>`;
+    }
   } catch (error) {
     console.error('SportScore history error:', error);
-    container.innerHTML = `<p class="data-message">L’historique n’a pas pu être chargé. Aucun résultat fictif ne sera affiché.</p>`;
+    container.innerHTML = `<p class="data-message">L’historique n’a pas pu être chargé. Réessaie plus tard; aucun résultat fictif ne sera affiché.</p>`;
   }
 }
 
