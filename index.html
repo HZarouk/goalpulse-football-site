@@ -3,14 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoalPulse - Matchs en direct</title>
+    <title>GoalPulse - Football, Matchs Live & News</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>GoalPulse — Scores & Matchs</h1>
-        <div id="matches-container"></div>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo"><i class="fa-solid fa-futbol"></i> GoalPulse</a>
+            <nav class="nav-links">
+                <a href="#matches" class="active"><i class="fa-solid fa-calendar-days"></i> Matchs</a>
+                <a href="#leagues"><i class="fa-solid fa-trophy"></i> Championnats</a>
+                <a href="#news"><i class="fa-regular fa-newspaper"></i> News</a>
+            </nav>
+            <div class="ad-banner-header">
+                <span class="ad-placeholder">Espace Pub (AdSense)</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        
+        <!-- Left Sidebar: Championnats -->
+        <aside class="sidebar-left">
+            <h3><i class="fa-solid fa-trophy"></i> Top Ligues</h3>
+            <ul class="league-list" id="league-selector">
+                <li class="league-item active" data-league="all"><i class="fa-solid fa-globe"></i> Tous les Matchs</li>
+                <li class="league-item" data-league="39"><img src="https://media.api-sports.io/football/leagues/39.png" width="18"> Premier League</li>
+                <li class="league-item" data-league="140"><img src="https://media.api-sports.io/football/leagues/140.png" width="18"> La Liga</li>
+                <li class="league-item" data-league="2"><img src="https://media.api-sports.io/football/leagues/2.png" width="18"> Champions League</li>
+                <li class="league-item" data-league="135"><img src="https://media.api-sports.io/football/leagues/135.png" width="18"> Serie A</li>
+                <li class="league-item" data-league="78"><img src="https://media.api-sports.io/football/leagues/78.png" width="18"> Bundesliga</li>
+                <li class="league-item" data-league="61"><img src="https://media.api-sports.io/football/leagues/61.png" width="18"> Ligue 1</li>
+                <li class="league-item" data-league="200"><img src="https://media.api-sports.io/football/leagues/200.png" width="18"> Botola Pro</li>
+            </ul>
+        </aside>
+
+        <!-- Center Content: Live Matches & News -->
+        <main class="content-center">
+            
+            <section id="matches" class="section-block">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-bolt" style="color: #e11d48;"></i> Matchs En Direct & A venir</h2>
+                    <div class="filter-tabs">
+                        <button class="tab-btn active" id="btn-live">Live Direct</button>
+                        <button class="tab-btn" id="btn-today">Aujourd'hui</button>
+                    </div>
+                </div>
+                <div id="matches-container" class="matches-grid">
+                    <!-- Dynamic matches -->
+                </div>
+            </section>
+
+            <!-- Mid Content Ad Banner -->
+            <div class="ad-banner-inline">
+                <span class="ad-placeholder">Espace Publicitaire Banner (728x90)</span>
+            </div>
+
+            <section id="news" class="section-block">
+                <div class="section-header">
+                    <h2><i class="fa-regular fa-newspaper"></i> Dernières Actualités Football</h2>
+                </div>
+                <div class="news-grid">
+                    <article class="news-card">
+                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500');"></div>
+                        <div class="news-content">
+                            <span class="news-tag">Champions League</span>
+                            <h3>Analyse des tactiques clés pour les quarts de finale européens</h3>
+                            <p>Découvrez l'analyse approfondie des schémas tactiques qui vont dominer les prochains chocs européens cette saison.</p>
+                        </div>
+                    </article>
+                    <article class="news-card">
+                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=500');"></div>
+                        <div class="news-content">
+                            <span class="news-tag">Mercato</span>
+                            <h3>Les grands mouvements attendus lors du prochain marché des transferts</h3>
+                            <p>Les géants européens préparent leurs offres phares. Bilan des rumeurs et des négociations en cours.</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Right Sidebar: Ads & Standings -->
+        <aside class="sidebar-right">
+            <div class="ad-widget">
+                <span class="ad-placeholder-sidebar">Pub AdSense (300x250)</span>
+            </div>
+
+            <div class="widget-box">
+                <h3><i class="fa-solid fa-ranking-star"></i> Prochains Grands Matchs</h3>
+                <ul class="upcoming-list" id="upcoming-list">
+                    <li><span>Real Madrid vs Barcelona</span> <small>Dim 21:00</small></li>
+                    <li><span>Man City vs Liverpool</span> <small>Sam 17:30</small></li>
+                    <li><span>PSG vs Marseille</span> <small>Dim 20:45</small></li>
+                </ul>
+            </div>
+        </aside>
+
     </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 GoalPulse Football - Tous droits réservés | <a href="#">Politique de Confidentialité</a> | <a href="#">Contact</a></p>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
