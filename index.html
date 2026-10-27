@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoalPulse - Football, Matchs Live & News</title>
+    <title>GoalPulse - Live Scores, Classement & News Football</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -15,43 +15,56 @@
             <a href="#" class="logo"><i class="fa-solid fa-futbol"></i> GoalPulse</a>
             <nav class="nav-links">
                 <a href="#matches" class="active"><i class="fa-solid fa-calendar-days"></i> Matchs</a>
-                <a href="#leagues"><i class="fa-solid fa-trophy"></i> Championnats</a>
-                <a href="#news"><i class="fa-regular fa-newspaper"></i> News</a>
+                <a href="#standings-sec"><i class="fa-solid fa-trophy"></i> Classement</a>
+                <a href="#news"><i class="fa-regular fa-newspaper"></i> Actualités</a>
             </nav>
             <div class="ad-banner-header">
-                <span class="ad-placeholder">Espace Pub (AdSense)</span>
+                <span class="ad-placeholder">Espace Pub (AdSense / 728x90)</span>
             </div>
         </div>
     </header>
 
     <div class="main-layout">
         
-        <!-- Left Sidebar: Championnats -->
+        <!-- Left Sidebar: Championnats Filter -->
         <aside class="sidebar-left">
-            <h3><i class="fa-solid fa-trophy"></i> Top Ligues</h3>
+            <h3><i class="fa-solid fa-trophy"></i> Championnats</h3>
             <ul class="league-list" id="league-selector">
                 <li class="league-item active" data-league="all"><i class="fa-solid fa-globe"></i> Tous les Matchs</li>
-                <li class="league-item" data-league="39"><img src="https://media.api-sports.io/football/leagues/39.png" width="18"> Premier League</li>
-                <li class="league-item" data-league="140"><img src="https://media.api-sports.io/football/leagues/140.png" width="18"> La Liga</li>
-                <li class="league-item" data-league="2"><img src="https://media.api-sports.io/football/leagues/2.png" width="18"> Champions League</li>
-                <li class="league-item" data-league="135"><img src="https://media.api-sports.io/football/leagues/135.png" width="18"> Serie A</li>
-                <li class="league-item" data-league="78"><img src="https://media.api-sports.io/football/leagues/78.png" width="18"> Bundesliga</li>
-                <li class="league-item" data-league="61"><img src="https://media.api-sports.io/football/leagues/61.png" width="18"> Ligue 1</li>
-                <li class="league-item" data-league="200"><img src="https://media.api-sports.io/football/leagues/200.png" width="18"> Botola Pro</li>
+                <li class="league-item" data-league="39"><img src="https://media.api-sports.io/football/leagues/39.png" width="18" alt="PL"> Premier League</li>
+                <li class="league-item" data-league="140"><img src="https://media.api-sports.io/football/leagues/140.png" width="18" alt="LaLiga"> La Liga</li>
+                <li class="league-item" data-league="2"><img src="https://media.api-sports.io/football/leagues/2.png" width="18" alt="UCL"> Champions League</li>
+                <li class="league-item" data-league="135"><img src="https://media.api-sports.io/football/leagues/135.png" width="18" alt="SerieA"> Serie A</li>
+                <li class="league-item" data-league="78"><img src="https://media.api-sports.io/football/leagues/78.png" width="18" alt="Bndes"> Bundesliga</li>
+                <li class="league-item" data-league="61"><img src="https://media.api-sports.io/football/leagues/61.png" width="18" alt="L1"> Ligue 1</li>
+                <li class="league-item" data-league="200"><img src="https://media.api-sports.io/football/leagues/200.png" width="18" alt="Botola"> Botola Pro</li>
             </ul>
+
+            <div class="api-key-box">
+                <label for="user-api-key"><i class="fa-solid fa-key"></i> Clé API Football (Gratuit)</label>
+                <input type="text" id="user-api-key" placeholder="Collez votre clé API-Sports ici..." value="3b08e2f0732808be8060205d15a5bd27">
+                <button id="save-key-btn"><i class="fa-solid fa-rotate"></i> Recharger Data Réelle</button>
+                <small>Obtenez une clé gratuite sur <a href="https://dashboard.api-football.com/" target="_blank" style="color:#38bdf8;">api-football.com</a></small>
+            </div>
         </aside>
 
-        <!-- Center Content: Live Matches & News -->
+        <!-- Center Content: Matches, Standings & News -->
         <main class="content-center">
             
             <section id="matches" class="section-block">
                 <div class="section-header">
-                    <h2><i class="fa-solid fa-bolt" style="color: #e11d48;"></i> Matchs En Direct & A venir</h2>
-                    <div class="filter-tabs">
-                        <button class="tab-btn active" id="btn-live">Live Direct</button>
-                        <button class="tab-btn" id="btn-today">Aujourd'hui</button>
-                    </div>
+                    <h2><i class="fa-solid fa-bolt" style="color: #e11d48;"></i> Matchs en Direct & Calendrier</h2>
                 </div>
+
+                <!-- Date Filter Bar -->
+                <div class="date-filter-bar">
+                    <button class="date-btn" id="btn-yesterday"><i class="fa-solid fa-chevron-left"></i> Hier</button>
+                    <button class="date-btn active" id="btn-today"><i class="fa-solid fa-calendar-day"></i> Aujourd'hui</button>
+                    <button class="date-btn" id="btn-tomorrow">Demain <i class="fa-solid fa-chevron-right"></i></button>
+                    <input type="date" id="custom-date-picker" class="date-input">
+                    <button class="tab-btn live-filter-btn" id="btn-live"><i class="fa-solid fa-circle-dot" style="color:#ef4444;"></i> Live Direct</button>
+                </div>
+
                 <div id="matches-container" class="matches-grid">
                     <!-- Dynamic matches -->
                 </div>
@@ -59,28 +72,88 @@
 
             <!-- Mid Content Ad Banner -->
             <div class="ad-banner-inline">
-                <span class="ad-placeholder">Espace Publicitaire Banner (728x90)</span>
+                <span class="ad-placeholder">Espace Publicitaire Banner (728x90 / AdSense)</span>
             </div>
 
+            <!-- Standings Table (Classement) -->
+            <section id="standings-sec" class="section-block">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-list-ol"></i> Classement des Championnats (Standings)</h2>
+                    <select id="standings-league-select" class="league-select-dropdown">
+                        <option value="39">Premier League (Angleterre)</option>
+                        <option value="140">La Liga (Espagne)</option>
+                        <option value="135">Serie A (Italie)</option>
+                        <option value="78">Bundesliga (Allemagne)</option>
+                        <option value="61">Ligue 1 (France)</option>
+                        <option value="200">Botola Pro (Maroc)</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="standings-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Équipe</th>
+                                <th>MJ</th>
+                                <th>V</th>
+                                <th>N</th>
+                                <th>D</th>
+                                <th>BP/BC</th>
+                                <th>Diff</th>
+                                <th>Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standings-tbody">
+                            <!-- Dynamic Standings rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Comprehensive News Section -->
             <section id="news" class="section-block">
                 <div class="section-header">
-                    <h2><i class="fa-regular fa-newspaper"></i> Dernières Actualités Football</h2>
+                    <h2><i class="fa-regular fa-newspaper"></i> Dernières Actualités & Analyses Football</h2>
                 </div>
                 <div class="news-grid">
                     <article class="news-card">
-                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=500');"></div>
+                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=600');"></div>
                         <div class="news-content">
-                            <span class="news-tag">Champions League</span>
-                            <h3>Analyse des tactiques clés pour les quarts de finale européens</h3>
-                            <p>Découvrez l'analyse approfondie des schémas tactiques qui vont dominer les prochains chocs européens cette saison.</p>
+                            <span class="news-tag">Ligue des Champions</span>
+                            <h3>Analyse Tactique : Les affrontements stratégiques décisifs en 1/4 de Finale</h3>
+                            <p>Les géants européens s'affrontent avec des schémas tactiques de haut niveau. Retour sur l'organisation défensive du Real Madrid et le pressing haut de Manchester City avant ce choc au sommet.</p>
+                            <span class="news-date"><i class="fa-regular fa-clock"></i> Il y a 2 heures</span>
                         </div>
                     </article>
+                    
                     <article class="news-card">
-                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=500');"></div>
+                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=600');"></div>
                         <div class="news-content">
-                            <span class="news-tag">Mercato</span>
-                            <h3>Les grands mouvements attendus lors du prochain marché des transferts</h3>
-                            <p>Les géants européens préparent leurs offres phares. Bilan des rumeurs et des négociations en cours.</p>
+                            <span class="news-tag">Mercato Estival</span>
+                            <h3>Rumeurs de Transferts : Les 5 dossiers brûlants de l'été 2026</h3>
+                            <p>Des attaquants vedettes aux jeunes pépites de la Botola Pro ciblés par la Ligue 1, tour d'horizon complet des négociations secrètes et des clauses de libération à venir.</p>
+                            <span class="news-date"><i class="fa-regular fa-clock"></i> Il y a 5 heures</span>
+                        </div>
+                    </article>
+
+                    <article class="news-card">
+                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600');"></div>
+                        <div class="news-content">
+                            <span class="news-tag">Premier League</span>
+                            <h3>La course au titre s'intensifie : Arsenal, Liverpool et City au coude à coude</h3>
+                            <p>À seulement quelques journées de la fin du championnat, décryptage du calendrier restant et des blessures clés qui pourraient faire basculer le sacre d'Angleterre.</p>
+                            <span class="news-date"><i class="fa-regular fa-clock"></i> Il y a 1 jour</span>
+                        </div>
+                    </article>
+
+                    <article class="news-card">
+                        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=600');"></div>
+                        <div class="news-content">
+                            <span class="news-tag">Botola Pro</span>
+                            <h3>Botola Pro Inwi : Le choc du derby casablancais Raja vs Wydad</h3>
+                            <p>Le derby mythique approche à grands pas. Bilan des deux formations, états de forme des effectifs et dispositif sécuritaire mis en place au complexe Mohammed V.</p>
+                            <span class="news-date"><i class="fa-regular fa-clock"></i> Il y a 1 jour</span>
                         </div>
                     </article>
                 </div>
@@ -88,26 +161,32 @@
 
         </main>
 
-        <!-- Right Sidebar: Ads & Standings -->
+        <!-- Right Sidebar: Ads & Widgets -->
         <aside class="sidebar-right">
             <div class="ad-widget">
                 <span class="ad-placeholder-sidebar">Pub AdSense (300x250)</span>
             </div>
 
             <div class="widget-box">
-                <h3><i class="fa-solid fa-ranking-star"></i> Prochains Grands Matchs</h3>
-                <ul class="upcoming-list" id="upcoming-list">
-                    <li><span>Real Madrid vs Barcelona</span> <small>Dim 21:00</small></li>
-                    <li><span>Man City vs Liverpool</span> <small>Sam 17:30</small></li>
-                    <li><span>PSG vs Marseille</span> <small>Dim 20:45</small></li>
+                <h3><i class="fa-solid fa-fire"></i> Top Buteurs (Premier League)</h3>
+                <ul class="top-scorers-list" id="top-scorers-list">
+                    <li><span>1. E. Haaland (Man City)</span> <strong>21 Goals</strong></li>
+                    <li><span>2. M. Salah (Liverpool)</span> <strong>17 Goals</strong></li>
+                    <li><span>3. O. Watkins (Aston Villa)</span> <strong>15 Goals</strong></li>
+                    <li><span>4. B. Saka (Arsenal)</span> <strong>14 Goals</strong></li>
+                    <li><span>5. A. Isak (Newcastle)</span> <strong>13 Goals</strong></li>
                 </ul>
+            </div>
+
+            <div class="ad-widget tall-ad">
+                <span class="ad-placeholder-sidebar">Pub AdSense Skyscraper (300x600)</span>
             </div>
         </aside>
 
     </div>
 
     <footer class="footer">
-        <p>&copy; 2026 GoalPulse Football - Tous droits réservés | <a href="#">Politique de Confidentialité</a> | <a href="#">Contact</a></p>
+        <p>&copy; 2026 GoalPulse Football - Tous droits réservés | <a href="#">Politique de Confidentialité</a> | <a href="#">Contact</a> | <a href="#">Mentions Légales</a></p>
     </footer>
 
     <script src="script.js"></script>
