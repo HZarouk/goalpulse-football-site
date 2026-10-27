@@ -13,3 +13,6 @@ Important: this environment could not verify live API responses. Deploy and test
 
 
 V8: amélioration du parsing des réponses SportScore et de l’historique 7 jours, avec retry sans filtre compétition si le premier appel ne retourne aucune ligne.
+
+
+V9 API fixes: selected-date fixtures are fetched without an API competition slug and filtered locally; history does the same. Standings and top-scorers try documented v1 aliases and common competition-slug variants. Live testing is still required because SportScore competition slugs can vary.

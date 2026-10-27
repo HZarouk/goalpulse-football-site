@@ -20,6 +20,15 @@ const LEAGUE_SLUGS = {
   '61': 'ligue-1',
   '200': 'botola-pro'
 };
+const LEAGUE_SLUG_CANDIDATES = {
+  '39': ['premier-league', 'english-premier-league'],
+  '140': ['la-liga', 'laliga', 'spanish-la-liga'],
+  '2': ['uefa-champions-league', 'champions-league'],
+  '135': ['serie-a', 'serie-a-italy', 'italian-serie-a'],
+  '78': ['bundesliga', 'german-bundesliga'],
+  '61': ['ligue-1', 'ligue-1-france', 'french-ligue-1'],
+  '200': ['botola-pro', 'botola']
+};
 const LEAGUE_NAMES = {
   '39': 'Premier League', '140': 'La Liga', '2': 'UEFA Champions League',
   '135': 'Serie A', '78': 'Bundesliga', '61': 'Ligue 1', '200': 'Botola Pro'
@@ -108,11 +117,14 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     if (isLive) {
       payload = await apiGet('/api/widget/matches/', { sport: SPORT, limit: 50 });
     } else {
-      payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date: dateStr, limit: 200, competition: leagueId !== 'all' ? LEAGUE_SLUGS[leagueId] : undefined });
+      // Fetch the selected UTC date without a competition slug first. This
+      // avoids an invalid/unsupported competition slug forcing an empty list.
+      payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date: dateStr, limit: 200 });
     }
     let matches = extractMatchRows(payload);
     let normalised = matches.map(normaliseMatch);
     if (isLive) normalised = normalised.filter(isLiveMatch);
+    else if (leagueId !== 'all') normalised = matchesSelectedLeague(normalised, leagueId);
     renderMatches(normalised);
   } catch (error) {
     console.error('SportScore fixtures error:', error);
@@ -226,15 +238,10 @@ async function fetchHistory() {
     const dates = Array.from({length: 7}, (_, i) => dateOffset(-(i + 1)));
     const collected = [];
     for (const date of dates) {
-      let payload = await apiGet('/api/v1/fixtures/', {
-        sport: SPORT, date, limit: 200,
-        competition: currentSelectedLeague !== 'all' ? LEAGUE_SLUGS[currentSelectedLeague] : undefined
-      });
-      let rows = extractMatchRows(payload);
-      if (!rows.length && currentSelectedLeague !== 'all') {
-        payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date, limit: 200 });
-        rows = extractMatchRows(payload);
-      }
+      // Always query the date without a competition filter, then filter locally.
+      // Some competition slugs are not recognized by the public API.
+      const payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date, limit: 200 });
+      const rows = extractMatchRows(payload);
       const normalised = rows.map(normaliseMatch);
       collected.push(...matchesSelectedLeague(normalised, currentSelectedLeague));
       await new Promise(resolve => setTimeout(resolve, 250));
@@ -261,10 +268,22 @@ async function fetchTopScorers(leagueId = '39') {
   if (!list) return;
   const slug = LEAGUE_SLUGS[leagueId] || 'premier-league';
   try {
-    const payload = await apiGet('/api/widget/topscorers/', { sport: SPORT, slug, limit: 5, stat: 'goals' });
-    let rows = payload?.topscorers || payload?.top_scorers || payload?.scorers || payload?.data?.topscorers || payload?.data?.top_scorers || payload?.data || [];
-    if (!Array.isArray(rows)) rows = rows?.players || rows?.rows || [];
-    if (!rows.length) throw new Error('No top scorers in response');
+    let rows = [];
+    let lastError;
+    const candidates = LEAGUE_SLUG_CANDIDATES[leagueId] || [slug];
+    for (const candidateSlug of candidates) {
+      for (const path of ['/api/widget/topscorers/', '/api/v1/topscorers/']) {
+        try {
+          const payload = await apiGet(path, { sport: SPORT, slug: candidateSlug, limit: 5, stat: 'goals' });
+          const root = payload?.data ?? payload;
+          const possible = root?.topscorers || root?.top_scorers || root?.scorers || root?.players || root?.rows || root;
+          rows = Array.isArray(possible) ? possible : (possible?.players || possible?.rows || []);
+          if (rows.length) break;
+        } catch (err) { lastError = err; }
+      }
+      if (rows.length) break;
+    }
+    if (!rows.length) throw lastError || new Error('No top scorers in response');
     list.innerHTML = '';
     rows.slice(0,5).forEach((r, i) => {
       const player = r.player?.name || r.name || r.player_name || 'Joueur';
@@ -290,10 +309,23 @@ async function fetchStandings(leagueId = '39') {
     return;
   }
   try {
-    const payload = await apiGet('/api/widget/standings/', { sport: SPORT, slug });
-    let rows = payload?.standings || payload?.table || payload?.data?.standings || payload?.data?.table || payload?.data || [];
-    if (!Array.isArray(rows)) rows = rows?.rows || rows?.table || [];
-    if (!rows.length) throw new Error('No standings rows in response');
+    let payload;
+    let rows = [];
+    let lastError;
+    const candidates = LEAGUE_SLUG_CANDIDATES[leagueId] || [slug];
+    for (const candidateSlug of candidates) {
+      for (const path of ['/api/widget/standings/', '/api/v1/standings/']) {
+        try {
+          payload = await apiGet(path, { sport: SPORT, slug: candidateSlug });
+          const root = payload?.data ?? payload;
+          const possible = root?.standings || root?.table || root?.rows || root?.standings?.rows || root;
+          rows = Array.isArray(possible) ? possible : (possible?.rows || possible?.table || []);
+          if (rows.length) break;
+        } catch (err) { lastError = err; }
+      }
+      if (rows.length) break;
+    }
+    if (!rows.length) throw lastError || new Error('No standings rows in response');
     tbody.innerHTML = '';
     rows.forEach((r, i) => {
       const team = r.team?.name || r.team_name || r.name || r.team || '—';
