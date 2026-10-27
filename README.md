@@ -1,12 +1,12 @@
-GOALPULSE V6 — SportScore
+GOALPULSE V7 — SportScore source + reduced API calls
 
-Files: index.html, script.js, styles.css
+Files: index.html, script.js, styles.css.
 
-Fixes included:
-- Constrains team crests so logos cannot expand over the page.
-- Adds a 7-day history view using SportScore date fixtures.
-- Removes hard-coded Premier League top-scorer numbers and attempts to load current data from SportScore.
-- Avoids discarding fixtures when SportScore does not include a competition label in each match object.
-- Continues to show no fabricated fallback scores.
+Changes from V6:
+- Uses SportScore public API directly; the API-Football Cloudflare Worker and API_FOOTBALL_KEY are not needed by this frontend.
+- Adds a 60-second in-memory cache for repeated identical requests.
+- Loads the 7-day history sequentially instead of firing seven requests at once.
+- Keeps the visible Powered by SportScore attribution link required by SportScore's published terms.
+- Keeps fabricated news and scorer figures removed; the news section remains an honest placeholder until a verified news source is integrated.
 
-Important: this is a code-level update only. The environment used to prepare it could not reach SportScore's API directly, so live API response shapes and league coverage still need to be tested after deployment. SportScore attribution must remain visible.
+Important: this environment could not verify live API responses. Deploy and test in the browser. SportScore's free public API has usage limits and availability is not guaranteed.

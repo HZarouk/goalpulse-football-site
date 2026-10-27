@@ -3,6 +3,8 @@
  */
 const SPORT_SCORE_BASE = 'https://sportscore.com';
 const SPORT = 'football';
+const API_CACHE_TTL_MS = 60_000;
+const apiCache = new Map();
 let currentSelectedLeague = 'all';
 let currentDateFilter = new Date().toISOString().slice(0, 10);
 let liveOnly = false;
@@ -29,9 +31,14 @@ async function apiGet(path, params = {}) {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   });
   url.searchParams.set('src', 'goalpulse');
-  const response = await fetch(url.toString(), { method: 'GET', headers: { 'Accept': 'application/json' } });
+  const cacheKey = url.toString();
+  const cached = apiCache.get(cacheKey);
+  if (cached && Date.now() - cached.savedAt < API_CACHE_TTL_MS) return cached.data;
+  const response = await fetch(cacheKey, { method: 'GET', headers: { 'Accept': 'application/json' } });
   if (!response.ok) throw new Error(`SportScore HTTP ${response.status}`);
-  return response.json();
+  const data = await response.json();
+  apiCache.set(cacheKey, { savedAt: Date.now(), data });
+  return data;
 }
 
 function safeText(value, fallback = '—') {
@@ -191,13 +198,18 @@ async function fetchHistory() {
   container.innerHTML = `<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Chargement de l’historique des 7 derniers jours…</div>`;
   try {
     const dates = Array.from({length: 7}, (_, i) => dateOffset(-(i + 1)));
-    const responses = await Promise.all(dates.map(date => apiGet('/api/v1/fixtures/', {
-      sport: SPORT, date, limit: 200,
-      competition: currentSelectedLeague !== 'all' ? LEAGUE_SLUGS[currentSelectedLeague] : undefined
-    })));
+    // Fetch one date at a time to avoid bursts against the public API.
+    const responses = [];
+    for (const date of dates) {
+      responses.push(await apiGet('/api/v1/fixtures/', {
+        sport: SPORT, date, limit: 200,
+        competition: currentSelectedLeague !== 'all' ? LEAGUE_SLUGS[currentSelectedLeague] : undefined
+      }));
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
     const seen = new Set();
     const matches = responses.flatMap(payload => {
-      const rows = Array.isArray(payload) ? payload : (payload.matches || payload.fixtures || payload.data?.matches || payload.data?.fixtures || payload.response || []);
+      const rows = Array.isArray(payload) ? payload : (payload.matches || payload.fixtures || payload.data?.matches || payload.data?.fixtures || payload.response || payload.data || []);
       return Array.isArray(rows) ? rows.map(normaliseMatch) : [];
     }).filter(m => {
       const key = m.slug || `${m.home}|${m.away}|${m.time}`;
