@@ -1,14 +1,24 @@
-# GoalPulse — Match Details Reliability Patch
+# GoalPulse — Phase C: Match Details
 
-This package improves match detail loading by trying multiple ESPN summary hosts/schema versions and reading additional possible event collections (`scoringPlays`, `keyEvents`, commentary items). It does not fabricate scorers, statistics, lineups, or timelines when the provider has no data.
+This package adds a responsive match-details modal to the current GoalPulse Phase B site.
 
-## Upload
-Replace these files in the root of `HZarouk/goalpulse-football-site`:
-- `index.html`
-- `script.js`
-- `styles.css`
+## New features
+- Click or keyboard-activate any match card to open Match Details.
+- Overview tab: match status, scheduled time, venue, and event timeline when supplied by ESPN.
+- Statistics tab: displays available team statistics only; unavailable values are not fabricated.
+- Lineups tab: displays player data when supplied by the endpoint.
+- Mobile-friendly layout, Escape-to-close, backdrop click, and visible focus styles.
+- Existing fixtures, filters, date controls, standings, news, and page layout are retained.
 
-The `index.html` and `styles.css` are retained from the Phase C package; `script.js` contains the patch. Upload/replace files, commit changes, then hard refresh the published site with Ctrl+Shift+R.
+## Deploy
+1. Download and unzip this package.
+2. In the `goalpulse-football-site` GitHub repository, upload/replace `index.html`, `script.js`, and `styles.css` in the repository root.
+3. Commit the changes and wait for GitHub Pages to deploy.
+4. Open the site and hard-refresh with `Ctrl + Shift + R`.
+5. Click a match card and test Overview, Statistics, Lineups, close button, backdrop click, and Escape key.
 
-## Data reliability note
-The site currently uses ESPN's public, undocumented JSON endpoints. They are not a guaranteed official developer API, and details availability can differ by competition and match. The patch tries fallbacks but cannot guarantee all match stats or lineups. For production-grade reliability, use a documented football data provider (for example API-Football or football-data.org) through a server-side scheduled job/GitHub Actions and keep any API key in GitHub Secrets, never in browser JavaScript.
+## Data limitations
+The site uses ESPN public, undocumented JSON endpoints. These are not a guaranteed official developer API and may change. The endpoint may not provide statistics, lineups, or event timelines for every competition or match. The interface explicitly shows a not-available message when extra data cannot be retrieved; it does not invent match facts.
+
+## QA note
+JavaScript syntax was checked when packaging. A live browser/device test against the deployed site has not been performed as part of this package. Verify desktop and mobile behavior after deployment.
