@@ -224,15 +224,34 @@ async function loadMatchSummary(match) {
     document.getElementById("detailContent").innerHTML = '<div class="detail-empty">Detailed data is not available for this match.</div>';
     return;
   }
-  try {
-    const payload = await getJSON(`${ESPN}/${match.leagueCode}/summary?event=${encodeURIComponent(match.eventId)}`);
-    if (activeDetailMatch?.eventId !== match.eventId) return;
-    activeDetailPayload = payload;
-    renderMatchDetailTab();
-  } catch (error) {
-    if (activeDetailMatch?.eventId !== match.eventId) return;
-    document.getElementById("detailContent").innerHTML = '<div class="detail-empty">The match score and schedule are available, but ESPN did not provide extra details right now. Try again later.</div>';
+
+  // ESPN's public JSON endpoints are undocumented and can vary by competition.
+  // Try the main summary endpoint and alternate hosts/schemas before showing an error.
+  const id = encodeURIComponent(match.eventId);
+  const endpoints = [
+    `${ESPN}/${match.leagueCode}/summary?event=${id}`,
+    `https://site.web.api.espn.com/apis/site/v2/sports/soccer/${match.leagueCode}/summary?event=${id}`,
+    `https://site.api.espn.com/apis/site/v3/sports/soccer/${match.leagueCode}/summary?event=${id}`,
+    `https://site.web.api.espn.com/apis/site/v3/sports/soccer/${match.leagueCode}/summary?event=${id}`
+  ];
+  for (const url of endpoints) {
+    try {
+      const payload = await getJSON(url);
+      if (activeDetailMatch?.eventId !== match.eventId) return;
+      if (!payload || (!payload.header && !payload.boxscore && !payload.plays &&
+          !payload.commentary && !payload.scoringPlays && !payload.keyEvents)) {
+        throw new Error("Summary payload did not contain match detail sections");
+      }
+      activeDetailPayload = payload;
+      renderMatchDetailTab();
+      return;
+    } catch (error) {
+      // Try the next supported response variant; do not invent missing match facts.
+    }
   }
+  if (activeDetailMatch?.eventId !== match.eventId) return;
+  document.getElementById("detailContent").innerHTML =
+    '<div class="detail-empty">The provider did not return match details for this fixture. Score and kickoff remain from the scoreboard feed; statistics, lineups and scorers are not guessed. Try another match or check again later.</div>';
 }
 function detailStatValue(team, candidates) {
   const stats = team?.statistics || team?.stats || [];
@@ -245,7 +264,7 @@ function detailStatValue(team, candidates) {
 function renderMatchDetailTab() {
   const root = document.getElementById("detailContent");
   const data = activeDetailPayload || {};
-  const competition = data.header?.competitions?.[0] || data.header?.competitions?.[0] || {};
+  const competition = data.header?.competitions?.[0] || data.competitions?.[0] || {};
   const competitors = competition.competitors || [];
   const home = competitors.find(c => c.homeAway === "home") || {};
   const away = competitors.find(c => c.homeAway === "away") || {};
@@ -286,12 +305,17 @@ function renderMatchDetailTab() {
     root.innerHTML = blocks ? `<div class="detail-lineups">${blocks}</div>` : '<div class="detail-empty">Lineups are not available for this match yet. They may appear closer to kick-off or after the match starts.</div>';
     return;
   }
-  const plays = data.plays || data.commentary?.items || [];
+  const plays = data.plays || data.commentary?.items || data.keyEvents || [];
+  const scoringPlays = Array.isArray(data.scoringPlays) ? data.scoringPlays : [];
+  const allEvents = [...scoringPlays, ...plays].filter((p, i, arr) =>
+    arr.findIndex(q => String(q.id || q.uid || "") === String(p.id || p.uid || "") &&
+      String(q.text || q.shortText || q.shortDescription || "") === String(p.text || p.shortText || p.shortDescription || "")) === i
+  );
   // ESPN summaries commonly expose scoring plays with scoringPlay=true and athletes[].
   // Never infer a scorer from the final score: only show names supplied by the feed.
-  const goals = plays.filter(p => {
-    const typeText = `${p.type?.text || ""} ${p.type?.name || ""} ${p.text || p.shortText || ""}`.toLowerCase();
-    return p.scoringPlay === true || /\b(goal|penalty scored|own goal)\b/.test(typeText);
+  const goals = allEvents.filter(p => {
+    const typeText = `${p.type?.text || ""} ${p.type?.name || ""} ${p.text || p.shortText || p.shortDescription || ""}`.toLowerCase();
+    return p.scoringPlay === true || p.scoringPlay === "true" || /\b(goal|penalty scored|own goal)\b/.test(typeText);
   });
   const scorerName = p => {
     const athletes = Array.isArray(p.athletes) ? p.athletes : Array.isArray(p.participants) ? p.participants : [];
@@ -302,7 +326,7 @@ function renderMatchDetailTab() {
   const goalRows = goals.map(p => {
     const clock = p.clock?.displayValue || p.time?.displayValue || p.clock || p.period?.displayValue || "•";
     const name = scorerName(p);
-    const description = p.text || p.shortText || p.type?.text || "Goal";
+    const description = p.text || p.shortText || p.shortDescription || p.type?.text || "Goal";
     const score = p.homeScore != null && p.awayScore != null ? `${p.homeScore}–${p.awayScore}` : "";
     return `<div class="detail-event goal-event"><time>${detailText(clock,"•")}</time><span><strong>⚽ ${escapeHTML(name || "Goal scorer not listed")}</strong><br><span class="goal-description">${escapeHTML(description)}</span></span>${score ? `<b class="goal-score">${escapeHTML(score)}</b>` : ""}</div>`;
   }).reverse().join("");
@@ -311,7 +335,7 @@ function renderMatchDetailTab() {
     : `<section class="goal-scorers"><h3>GOAL SCORERS</h3><div class="detail-empty">Scorer information is not available from ESPN for this match yet.</div></section>`;
   const events = plays.map(p => {
     const clock = p.clock?.displayValue || p.time?.displayValue || p.clock || "";
-    const text = p.text || p.shortText || p.type?.text || p.type?.name || "";
+    const text = p.text || p.shortText || p.shortDescription || p.type?.text || p.type?.name || "";
     if (!text) return "";
     return `<div class="detail-event"><time>${detailText(clock,"•")}</time><span>${escapeHTML(text)}</span></div>`;
   }).filter(Boolean).slice(-30).reverse().join("");
