@@ -1,18 +1,11 @@
-GOALPULSE V8 — SportScore source + reduced API calls
+# GOALPULSE V10 — corrections ciblées
 
-Files: index.html, script.js, styles.css.
+Corrections incluses dans cette version :
+- Le filtre championnat s'applique aussi lorsque le mode Live Direct est activé.
+- Le slug du match peut être extrait du champ `url` retourné par SportScore.
+- Les dates calendrier sont calculées en date locale, sans conversion ISO UTC pouvant décaler le jour.
+- Les lignes top buteurs incomplètes ne sont plus affichées avec un faux nom générique.
 
-Changes from V6:
-- Uses SportScore public API directly; the API-Football Cloudflare Worker and API_FOOTBALL_KEY are not needed by this frontend.
-- Adds a 60-second in-memory cache for repeated identical requests.
-- Loads the 7-day history sequentially instead of firing seven requests at once.
-- Keeps the visible Powered by SportScore attribution link required by SportScore's published terms.
-- Keeps fabricated news and scorer figures removed; the news section remains an honest placeholder until a verified news source is integrated.
-
-Important: this environment could not verify live API responses. Deploy and test in the browser. SportScore's free public API has usage limits and availability is not guaranteed.
-
-
-V8: amélioration du parsing des réponses SportScore et de l’historique 7 jours, avec retry sans filtre compétition si le premier appel ne retourne aucune ligne.
-
-
-V9 API fixes: selected-date fixtures are fetched without an API competition slug and filtered locally; history does the same. Standings and top-scorers try documented v1 aliases and common competition-slug variants. Live testing is still required because SportScore competition slugs can vary.
+Limite importante :
+- L'endpoint de classement `/api/widget/standings/` testé le 27 octobre 2026 avec `slug=premier-league` renvoie HTTP 404 dans le test effectué. Ce ZIP ne prétend donc pas réparer le classement ou garantir les top buteurs : il conserve un message d'indisponibilité plutôt que d'inventer des données.
+- Il faut publier ce dossier sur GitHub Pages puis vérifier dans le navigateur que les réponses réelles de l'API et le filtrage sont corrects.

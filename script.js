@@ -6,7 +6,10 @@ const SPORT = 'football';
 const API_CACHE_TTL_MS = 60_000;
 const apiCache = new Map();
 let currentSelectedLeague = 'all';
-let currentDateFilter = new Date().toISOString().slice(0, 10);
+let currentDateFilter = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+})();
 let liveOnly = false;
 
 // The old API-Sports numeric IDs are mapped to SportScore competition slugs.
@@ -69,7 +72,7 @@ function normaliseMatch(raw) {
   const leagueSlug = m.competition?.slug ?? m.competition_slug ?? m.league?.slug ?? '';
   const homeLogo = m.home_logo ?? m.teams?.home?.logo ?? m.homeTeam?.logo ?? '';
   const awayLogo = m.away_logo ?? m.teams?.away?.logo ?? m.awayTeam?.logo ?? '';
-  return { raw: m, home, away, homeScore, awayScore, status, time, league, leagueSlug, homeLogo, awayLogo, slug: m.slug ?? m.match_slug ?? m.url_slug ?? '' };
+  return { raw: m, home, away, homeScore, awayScore, status, time, league, leagueSlug, homeLogo, awayLogo, slug: m.slug ?? m.match_slug ?? m.url_slug ?? (m.url ? String(m.url).split('/').filter(Boolean).pop() : '') };
 }
 
 function isLiveMatch(m) {
@@ -124,7 +127,8 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     let matches = extractMatchRows(payload);
     let normalised = matches.map(normaliseMatch);
     if (isLive) normalised = normalised.filter(isLiveMatch);
-    else if (leagueId !== 'all') normalised = matchesSelectedLeague(normalised, leagueId);
+    // Always apply the selected competition filter, including Live mode.
+    if (leagueId !== 'all') normalised = matchesSelectedLeague(normalised, leagueId);
     renderMatches(normalised);
   } catch (error) {
     console.error('SportScore fixtures error:', error);
@@ -286,13 +290,18 @@ async function fetchTopScorers(leagueId = '39') {
     if (!rows.length) throw lastError || new Error('No top scorers in response');
     list.innerHTML = '';
     rows.slice(0,5).forEach((r, i) => {
-      const player = r.player?.name || r.name || r.player_name || 'Joueur';
+      const player = r.player?.name || r.name || r.player_name || '';
       const team = r.team?.name || r.team_name || '';
-      const goals = r.goals ?? r.total ?? r.value ?? r.statistic?.value ?? '—';
+      const goals = r.goals ?? r.total ?? r.value ?? r.statistic?.value ?? null;
+      // Do not render malformed API rows as if they were real player records.
+      if (!player || goals === null) return;
       const li = document.createElement('li');
       li.innerHTML = `<span>${i+1}. ${esc(player)}${team ? ` (${esc(team)})` : ''}</span><strong>${esc(goals)} buts</strong>`;
       list.appendChild(li);
     });
+    if (!list.children.length) {
+      list.innerHTML = '<li><span>Classement des buteurs indisponible actuellement.</span></li>';
+    }
   } catch (error) {
     console.warn('SportScore top scorers unavailable:', error);
     list.innerHTML = '<li><span>Classement des buteurs indisponible actuellement.</span></li>';
@@ -353,9 +362,13 @@ function setActiveDateBtn(btn) {
   if (btn) btn.classList.add('active');
 }
 function dateOffset(days) {
+  // Build a local calendar date; toISOString() can shift the date across time zones.
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0,10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
