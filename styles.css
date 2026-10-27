@@ -462,3 +462,20 @@ body {
     color: #38bdf8;
     text-decoration: none;
 }
+/* SportScore data states and match details */
+.data-message { grid-column: 1 / -1; text-align: center; padding: 22px; color: #94a3b8; line-height: 1.6; }
+.match-card { cursor: pointer; }
+.match-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+.match-card-hint { text-align: center; font-size: 11px; color: #94a3b8; padding: 0 10px 10px; }
+.match-details-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(2,6,23,.78); padding: 24px; overflow-y: auto; }
+.match-details-modal.open { display: flex; align-items: flex-start; justify-content: center; }
+.match-details-panel { width: min(760px, 100%); margin: 5vh auto; position: relative; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 14px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+.details-close { position: absolute; right: 14px; top: 10px; border: 0; background: transparent; color: #e2e8f0; font-size: 30px; cursor: pointer; }
+#match-details-title { padding-right: 28px; margin: 0 0 18px; font-size: 20px; }
+.detail-section { border-top: 1px solid #334155; padding: 14px 0; }
+.detail-section h3 { color: #38bdf8; margin: 0 0 8px; font-size: 15px; }
+.detail-section ul { margin: 0; padding-left: 20px; }
+.detail-section li { margin: 6px 0; overflow-wrap: anywhere; }
+.sportscore-credit, .sportscore-footer { text-align: center; margin: 18px auto; font-size: 12px; color: #94a3b8; }
+.sportscore-credit a, .sportscore-footer a { color: #38bdf8; text-decoration: underline; }
+.sportscore-footer { padding: 16px; border-top: 1px solid #334155; }
