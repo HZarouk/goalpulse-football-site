@@ -1,43 +1,62 @@
-// Remplace par ton propre token API Football-Data
-const API_KEY = "TON_API_KEY_ICI"; 
+// Configuration dial API Football
+const API_KEY = "3b08e2f0732808be8060205d15a5bd27"; // API Key test
+const API_URL = "https://v3.football.api-sports.io/fixtures?live=all";
 
-// Exemple : Premier League ('PL'), Champions League ('CL'), La Liga ('PD')
-const LEAGUE_CODE = "PL"; 
-const API_URL = `https://api.football-data.org/v4/competitions/${LEAGUE_CODE}/matches?status=SCHEDULED`;
-
-async function fetchMatchData() {
+async function fetchLiveMatches() {
     const container = document.getElementById("matches-container");
     if (!container) return;
 
-    container.innerHTML = "<p>Chargement des matchs en cours...</p>";
+    container.innerHTML = "<div class='loading'>Jari jalb l-matchat direct...</div>";
 
     try {
         const response = await fetch(API_URL, {
             method: "GET",
             headers: {
-                "X-Auth-Token": API_KEY
+                "x-apisports-key": API_KEY
             }
         });
 
         if (!response.ok) {
-            throw new Error(`Erreur HTTP : ${response.status}`);
+            throw new Error(`HTTP Error: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("Données reçues depuis l'API :", data);
+        console.log("Data API:", data);
 
-        // Vérification de la présence des matchs
-        if (!data.matches || data.matches.length === 0) {
-            container.innerHTML = "<p>Aucun match programmé pour le moment.</p>";
+        if (!data.response || data.response.length === 0) {
+            // Ila makayn 7ta match live daba, njibo matchat dial l-yowm
+            fetchTodayMatches();
             return;
         }
 
-        // Afficher les 10 prochains matchs
-        renderMatches(data.matches.slice(0, 10));
+        renderMatches(data.response);
 
     } catch (error) {
-        console.error("Erreur lors de la récupération des données :", error);
-        container.innerHTML = `<p style="color:red;">Erreur : ${error.message}. Vérifie la console (F12).</p>`;
+        console.error("Error:", error);
+        container.innerHTML = "<p style='color:red;'>Mchkil f l-API. T'kked men l-Console (F12).</p>";
+    }
+}
+
+async function fetchTodayMatches() {
+    const container = document.getElementById("matches-container");
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+        const response = await fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`, {
+            method: "GET",
+            headers: {
+                "x-apisports-key": API_KEY
+            }
+        });
+        const data = await response.json();
+        
+        if (!data.response || data.response.length === 0) {
+            container.innerHTML = "<p>Makayn ta match l-yowm.</p>";
+            return;
+        }
+        renderMatches(data.response.slice(0, 15)); // Affiche 15 matches
+    } catch (e) {
+        container.innerHTML = "<p>Mchkil f l-fetche dial matchat l-yowm.</p>";
     }
 }
 
@@ -45,29 +64,31 @@ function renderMatches(matches) {
     const container = document.getElementById("matches-container");
     container.innerHTML = "";
 
-    matches.forEach(match => {
-        const matchCard = document.createElement("div");
-        matchCard.className = "match-card";
-        
-        // Formater la date du match
-        const matchDate = new Date(match.utcDate).toLocaleString('fr-FR', {
-            dateStyle: 'short',
-            timeStyle: 'short'
-        });
+    matches.forEach(item => {
+        const fixture = item.fixture;
+        const teams = item.teams;
+        const goals = item.goals;
+        const status = fixture.status.short;
 
-        matchCard.innerHTML = `
-            <div class="match-info">
-                <span class="date">${matchDate}</span>
+        const card = document.createElement("div");
+        card.className = "match-card";
+        card.innerHTML = `
+            <div class="league-name">${item.league.name} - ${item.league.country}</div>
+            <div class="match-details">
+                <div class="team">
+                    <img src="${teams.home.logo}" alt="${teams.home.name}" width="25">
+                    <span>${teams.home.name}</span>
+                </div>
+                <div class="score">${goals.home ?? 0} - ${goals.away ?? 0}</div>
+                <div class="team">
+                    <img src="${teams.away.logo}" alt="${teams.away.name}" width="25">
+                    <span>${teams.away.name}</span>
+                </div>
             </div>
-            <div class="teams">
-                <span class="team">${match.homeTeam.name}</span>
-                <span class="vs">VS</span>
-                <span class="team">${match.awayTeam.name}</span>
-            </div>
+            <div class="status-badge">${status} - ${fixture.status.elapsed ?? 0}'</div>
         `;
-        container.appendChild(matchCard);
+        container.appendChild(card);
     });
 }
 
-// Lancement automatique au chargement de la page
-document.addEventListener("DOMContentLoaded", fetchMatchData);
+document.addEventListener("DOMContentLoaded", fetchLiveMatches);
