@@ -49,7 +49,7 @@ function normaliseMatch(raw) {
   const awayScore = m.away_score ?? m.score?.away ?? m.goals?.away ?? m.scores?.away;
   const status = m.status_text ?? m.status ?? m.fixture?.status?.short ?? 'Scheduled';
   const time = m.time ?? m.kickoff ?? m.date ?? m.fixture?.date;
-  const league = m.competition?.name ?? m.league?.name ?? m.tournament?.name ?? m.competition_name ?? '';
+  const league = m.competition?.name ?? m.league?.name ?? m.tournament?.name ?? m.competition_name ?? (currentSelectedLeague !== 'all' ? (LEAGUE_NAMES[currentSelectedLeague] || '') : 'Football');
   const leagueSlug = m.competition?.slug ?? m.competition_slug ?? m.league?.slug ?? '';
   const homeLogo = m.home_logo ?? m.teams?.home?.logo ?? m.homeTeam?.logo ?? '';
   const awayLogo = m.away_logo ?? m.teams?.away?.logo ?? m.awayTeam?.logo ?? '';
@@ -83,11 +83,6 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     if (!Array.isArray(matches)) matches = [];
     let normalised = matches.map(normaliseMatch);
     if (isLive) normalised = normalised.filter(isLiveMatch);
-    if (leagueId !== 'all') {
-      const targetName = (LEAGUE_NAMES[leagueId] || '').toLowerCase();
-      const targetSlug = (LEAGUE_SLUGS[leagueId] || '').toLowerCase();
-      normalised = normalised.filter(m => `${m.league} ${m.leagueSlug}`.toLowerCase().includes(targetName) || (targetSlug && m.leagueSlug.toLowerCase() === targetSlug));
-    }
     renderMatches(normalised);
   } catch (error) {
     console.error('SportScore fixtures error:', error);
@@ -187,6 +182,60 @@ async function showMatchDetails(slug) {
   }
 }
 
+async function fetchHistory() {
+  const container = document.getElementById('matches-container');
+  if (!container) return;
+  liveOnly = false;
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-history')?.classList.add('active');
+  container.innerHTML = `<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Chargement de l’historique des 7 derniers jours…</div>`;
+  try {
+    const dates = Array.from({length: 7}, (_, i) => dateOffset(-(i + 1)));
+    const responses = await Promise.all(dates.map(date => apiGet('/api/v1/fixtures/', {
+      sport: SPORT, date, limit: 200,
+      competition: currentSelectedLeague !== 'all' ? LEAGUE_SLUGS[currentSelectedLeague] : undefined
+    })));
+    const seen = new Set();
+    const matches = responses.flatMap(payload => {
+      const rows = Array.isArray(payload) ? payload : (payload.matches || payload.fixtures || payload.data?.matches || payload.data?.fixtures || payload.response || []);
+      return Array.isArray(rows) ? rows.map(normaliseMatch) : [];
+    }).filter(m => {
+      const key = m.slug || `${m.home}|${m.away}|${m.time}`;
+      if (seen.has(key)) return false; seen.add(key);
+      return true;
+    }).sort((a,b) => new Date(b.time || 0) - new Date(a.time || 0));
+    renderMatches(matches);
+    if (!matches.length) container.innerHTML = `<p class="data-message">Aucun résultat historique disponible pour ces 7 jours. Essaie « Tous les Matchs » ou une autre période.</p>`;
+  } catch (error) {
+    console.error('SportScore history error:', error);
+    container.innerHTML = `<p class="data-message">L’historique n’a pas pu être chargé. Aucun résultat fictif ne sera affiché.</p>`;
+  }
+}
+
+async function fetchTopScorers(leagueId = '39') {
+  const list = document.getElementById('top-scorers-list');
+  if (!list) return;
+  const slug = LEAGUE_SLUGS[leagueId] || 'premier-league';
+  try {
+    const payload = await apiGet('/api/widget/topscorers/', { sport: SPORT, slug, limit: 5, stat: 'goals' });
+    let rows = payload?.topscorers || payload?.top_scorers || payload?.scorers || payload?.data?.topscorers || payload?.data?.top_scorers || payload?.data || [];
+    if (!Array.isArray(rows)) rows = rows?.players || rows?.rows || [];
+    if (!rows.length) throw new Error('No top scorers in response');
+    list.innerHTML = '';
+    rows.slice(0,5).forEach((r, i) => {
+      const player = r.player?.name || r.name || r.player_name || 'Joueur';
+      const team = r.team?.name || r.team_name || '';
+      const goals = r.goals ?? r.total ?? r.value ?? r.statistic?.value ?? '—';
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${i+1}. ${esc(player)}${team ? ` (${esc(team)})` : ''}</span><strong>${esc(goals)} buts</strong>`;
+      list.appendChild(li);
+    });
+  } catch (error) {
+    console.warn('SportScore top scorers unavailable:', error);
+    list.innerHTML = '<li><span>Classement des buteurs indisponible actuellement.</span></li>';
+  }
+}
+
 async function fetchStandings(leagueId = '39') {
   const tbody = document.getElementById('standings-tbody');
   if (!tbody) return;
@@ -238,16 +287,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (picker) picker.value = currentDateFilter;
   fetchMatchesFromAPI(currentDateFilter, false, currentSelectedLeague);
   fetchStandings(document.getElementById('standings-league-select')?.value || '39');
+  fetchTopScorers('39');
 
   document.getElementById('btn-today')?.addEventListener('click', e => { currentDateFilter = dateOffset(0); if (picker) picker.value = currentDateFilter; setActiveDateBtn(e.currentTarget); fetchMatchesFromAPI(currentDateFilter, false, currentSelectedLeague); });
   document.getElementById('btn-yesterday')?.addEventListener('click', e => { currentDateFilter = dateOffset(-1); if (picker) picker.value = currentDateFilter; setActiveDateBtn(e.currentTarget); fetchMatchesFromAPI(currentDateFilter, false, currentSelectedLeague); });
   document.getElementById('btn-tomorrow')?.addEventListener('click', e => { currentDateFilter = dateOffset(1); if (picker) picker.value = currentDateFilter; setActiveDateBtn(e.currentTarget); fetchMatchesFromAPI(currentDateFilter, false, currentSelectedLeague); });
   picker?.addEventListener('change', e => { currentDateFilter = e.target.value; document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active')); fetchMatchesFromAPI(currentDateFilter, false, currentSelectedLeague); });
+  document.getElementById('btn-history')?.addEventListener('click', fetchHistory);
   document.getElementById('btn-live')?.addEventListener('click', () => { document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active')); fetchMatchesFromAPI(currentDateFilter, true, currentSelectedLeague); });
   document.querySelectorAll('.league-item').forEach(item => item.addEventListener('click', () => {
     document.querySelectorAll('.league-item').forEach(i => i.classList.remove('active'));
     item.classList.add('active'); currentSelectedLeague = item.getAttribute('data-league') || 'all';
     fetchMatchesFromAPI(currentDateFilter, liveOnly, currentSelectedLeague);
   }));
-  document.getElementById('standings-league-select')?.addEventListener('change', e => fetchStandings(e.target.value));
+  document.getElementById('standings-league-select')?.addEventListener('change', e => { fetchStandings(e.target.value); fetchTopScorers(e.target.value); });
 });
