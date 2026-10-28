@@ -5,12 +5,14 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5500',
 ];
 const SPORTSCORE = 'https://sportscore.com';
+const UPSTREAM_TIMEOUT_MS = 8000;
 const TZ = 'Africa/Casablanca';
 const STALE_TTL = 7 * 24 * 3600;
+const KV_TTL = 30 * 24 * 3600;
 const TTL = { live: 60, today: 300, past: 86400, future: 3600, standings: 1800, scorers: 3600 };
 
-// slug: standings, topscorers et fixtures (competition=slug)
-// names / logoIds: utilisés seulement pour /api/live
+// slug : standings, topscorers et fixtures (competition=slug)
+// names / logoIds : utilisés seulement pour /api/live
 const LEAGUES = {
   botola: {
     name: 'Botola Pro',
@@ -81,11 +83,21 @@ function jsonResponse(data, status, cors, extra = {}) {
   });
 }
 
-// ---------- Upstream ----------
+// ---------- Upstream (avec timeout) ----------
 async function sportscore(path, params) {
   const u = new URL(path, SPORTSCORE);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
-  const res = await fetch(u, { headers: { Accept: 'application/json', 'User-Agent': 'GoalPulse/1.0' } });
+
+  let res;
+  try {
+    res = await fetch(u, {
+      headers: { Accept: 'application/json', 'User-Agent': 'GoalPulse/1.0' },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+  } catch (err) {
+    throw new HttpError(502, `SportScore injoignable (${err.name === 'TimeoutError' ? 'timeout' : 'erreur réseau'})`);
+  }
+
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.error) throw new HttpError(502, `SportScore: ${body.error || res.status}`);
   return body;
@@ -99,7 +111,7 @@ function leagueOf(competition, logo) {
   return null;
 }
 
-// forcedKey: clé du championnat quand la requête est filtrée par competition=slug
+// forcedKey : clé du championnat quand la requête est filtrée par competition=slug
 function mapMatch(x, forcedKey) {
   const key = forcedKey || leagueOf(x.competition, x.competition_logo);
   if (!key) return null;
@@ -174,6 +186,7 @@ async function cachedJSON(key, ttl, load) {
   try {
     return { data: await inflight.get(key), cache: 'MISS' };
   } catch (err) {
+    // SportScore en erreur ou timeout : on renvoie la dernière donnée connue si elle existe
     const old = await cache.match(staleReq);
     if (old) return { data: await old.json(), cache: 'STALE' };
     throw err;
@@ -187,21 +200,31 @@ function dayTtl(date) {
 }
 
 // Un appel par championnat. Si un championnat échoue, les autres restent affichés.
-function getMatchesForDate(date) {
-  return cachedJSON(`matches:${date}`, dayTtl(date), async () => {
-    const results = await Promise.allSettled(
-      Object.entries(LEAGUES).map(([key, L]) =>
-        sportscore('/api/v1/fixtures/', {
-          sport: 'football', date, competition: L.slug, limit: 200,
-        }).then(body => (body.matches || []).map(m => mapMatch(m, key)).filter(Boolean))
-      )
-    );
-    if (results.every(r => r.status === 'rejected')) {
-      throw new HttpError(502, 'SportScore indisponible');
+async function loadMatchesForDate(date) {
+  const results = await Promise.allSettled(
+    Object.entries(LEAGUES).map(([key, L]) =>
+      sportscore('/api/v1/fixtures/', {
+        sport: 'football', date, competition: L.slug, limit: 200,
+      }).then(body => (body.matches || []).map(m => mapMatch(m, key)).filter(Boolean))
+    )
+  );
+  if (results.every(r => r.status === 'rejected')) {
+    throw new HttpError(502, 'SportScore indisponible');
+  }
+  return { matches: results.flatMap(r => (r.status === 'fulfilled' ? r.value : [])) };
+}
+
+async function getMatchesForDate(date, env) {
+  // Jour passé : archive KV d'abord, sinon SportScore via cache
+  if (date < casaToday() && env.GOALPULSE_KV) {
+    try {
+      const saved = await env.GOALPULSE_KV.get(`day:${date}`, 'json');
+      if (saved) return { data: saved, cache: 'KV' };
+    } catch (_) {
+      // KV indisponible : on continue vers SportScore
     }
-    const matches = results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
-    return { matches };
-  });
+  }
+  return cachedJSON(`matches:v2:${date}`, dayTtl(date), () => loadMatchesForDate(date));
 }
 
 function getLive() {
@@ -233,7 +256,7 @@ function resolveLeague(v) {
 }
 
 // ---------- Routing ----------
-async function route(url) {
+async function route(url, env) {
   const path = url.pathname;
 
   if (path === '/api/matches') {
@@ -241,7 +264,7 @@ async function route(url) {
     const date = url.searchParams.get('date') || today;
     if (!isDate(date)) throw new HttpError(400, 'date invalide (YYYY-MM-DD)');
     if (date < addDays(today, -14) || date > addDays(today, 7)) throw new HttpError(400, 'date hors plage');
-    const r = await getMatchesForDate(date);
+    const r = await getMatchesForDate(date, env);
     return { payload: { ...r.data, meta: { date, provider: 'SportScore' } }, cache: r.cache };
   }
 
@@ -262,12 +285,24 @@ async function route(url) {
     return { payload: { ...r.data, meta: { league, provider: 'SportScore' } }, cache: r.cache };
   }
 
+  // Admin : archive un jour dans KV (protégé par ADMIN_KEY)
+  if (path === '/api/admin/archive') {
+    const key = url.searchParams.get('key');
+    if (!env.ADMIN_KEY || key !== env.ADMIN_KEY) throw new HttpError(403, 'forbidden');
+    if (!env.GOALPULSE_KV) throw new HttpError(500, 'KV binding manquant');
+    const date = url.searchParams.get('date') || addDays(casaToday(), -1);
+    if (!isDate(date)) throw new HttpError(400, 'date invalide (YYYY-MM-DD)');
+    const data = await loadMatchesForDate(date);
+    await env.GOALPULSE_KV.put(`day:${date}`, JSON.stringify(data), { expirationTtl: KV_TTL });
+    return { payload: { archived: date, count: data.matches.length }, cache: 'ADMIN' };
+  }
+
   throw new HttpError(404, 'Not found');
 }
 
 // ---------- Entry ----------
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const cors = corsHeaders(request.headers.get('Origin'));
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (request.method !== 'GET') return jsonResponse({ error: 'Method not allowed' }, 405, cors);
@@ -275,15 +310,30 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/health') {
-      return jsonResponse({ ok: true, provider: 'SportScore', leagues: Object.keys(LEAGUES) }, 200, cors);
+      return jsonResponse({
+        ok: true,
+        provider: 'SportScore',
+        leagues: Object.keys(LEAGUES),
+        kv: Boolean(env.GOALPULSE_KV),
+      }, 200, cors);
     }
 
     try {
-      const { payload, cache } = await route(url);
+      const { payload, cache } = await route(url, env);
       return jsonResponse(payload, 200, cors, { 'X-Cache': cache });
     } catch (e) {
       const status = e instanceof HttpError ? e.status : 502;
       return jsonResponse({ error: e.message || 'Proxy failure' }, status, cors);
     }
+  },
+
+  // Cron : archive hier dans KV (chaque jour à 01:00 UTC = 02:00 Casablanca)
+  async scheduled(event, env, ctx) {
+    if (!env.GOALPULSE_KV) return;
+    const yesterday = addDays(casaToday(), -1);
+    const data = await loadMatchesForDate(yesterday);
+    await env.GOALPULSE_KV.put(`day:${yesterday}`, JSON.stringify(data), {
+      expirationTtl: KV_TTL,
+    });
   },
 };

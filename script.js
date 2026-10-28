@@ -8,6 +8,7 @@ const LEAGUE_NAMES = {
   seriea: 'Serie A',
 };
 const LIVE_REFRESH_MS = 120000;
+const CLIENT_TIMEOUT_MS = 10000;
 
 const state = { mode: 'day', date: '', league: 'all' };
 let liveTimer = null;
@@ -30,10 +31,16 @@ const fmtDay = (iso) => new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day:
 async function api(path, params = {}) {
   const u = new URL(API_BASE + path);
   Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
-  const res = await fetch(u);
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-  return body;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), CLIENT_TIMEOUT_MS);
+  try {
+    const res = await fetch(u, { signal: ctrl.signal });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const inLeague = (list) => state.league === 'all' ? list : list.filter(m => m.league_key === state.league);
@@ -47,15 +54,20 @@ function matchCard(m) {
   else status = `<span class="status-normal">${m.time ? fmtHour(m.time) : '-'}</span>`;
 
   const score = m.home_score == null ? 'vs' : `${m.home_score} - ${m.away_score}`;
+  const href = m.url ? `https://sportscore.com${m.url}` : 'https://sportscore.com/';
+
   return `
-    <article class="match-card">
-      <div class="card-header"><span>${esc(m.league_name)}</span>${status}</div>
-      <div class="card-body">
-        <div class="team">${logo(m.home_logo)}<span class="team-name">${esc(m.home)}</span></div>
-        <div class="score">${score}</div>
-        <div class="team away"><span class="team-name">${esc(m.away)}</span>${logo(m.away_logo)}</div>
-      </div>
-    </article>`;
+    <a class="match-card-link" href="${esc(href)}" target="_blank" rel="noopener" title="Voir les détails sur SportScore">
+      <article class="match-card">
+        <div class="card-header"><span>${esc(m.league_name)}</span>${status}</div>
+        <div class="card-body">
+          <div class="team">${logo(m.home_logo)}<span class="team-name">${esc(m.home)}</span></div>
+          <div class="score">${score}</div>
+          <div class="team away"><span class="team-name">${esc(m.away)}</span>${logo(m.away_logo)}</div>
+        </div>
+        <div class="match-card-hint">Détails sur SportScore ↗</div>
+      </article>
+    </a>`;
 }
 
 function renderMatches(list, emptyMsg) {

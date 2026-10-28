@@ -1,3 +1,10 @@
 name = "goalpulse-api"
 main = "worker.js"
 compatibility_date = "2026-10-27"
+
+[[kv_namespaces]]
+binding = "GOALPULSE_KV"
+id = "a966792a91d340908292fe12c930a92b"
+
+[triggers]
+crons = ["0 1 * * *"]
