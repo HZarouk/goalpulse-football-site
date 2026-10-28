@@ -1,5 +1,5 @@
-/* GOALPULSE — API-Football via secured Cloudflare Worker proxy. */
-const API_BASE = 'https://goalpulse-api.mizouzarouk.workers.dev';
+/* GOALPULSE — SportScore public API (no API-Football key / no Worker required). */
+const API_BASE = 'https://sportscore.com';
 const SPORT = 'football';
 const API_CACHE_TTL_MS = 60_000;
 const apiCache = new Map();
@@ -41,6 +41,7 @@ async function apiGet(path, params = {}) {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   });
   
+  url.searchParams.set('src', 'goalpulse-football-site');
   const cacheKey = url.toString();
   const cached = apiCache.get(cacheKey);
   if (cached && Date.now() - cached.savedAt < API_CACHE_TTL_MS) return cached.data;
@@ -129,7 +130,7 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     if (leagueId !== 'all') normalised = matchesSelectedLeague(normalised, leagueId);
     renderMatches(normalised);
   } catch (error) {
-    console.error('GoalPulse fixtures error:', error);
+    console.error('GoalPulse / SportScore fixtures error:', error);
     container.innerHTML = `<p class="data-message">Ma قدرناش نجيبو les matchs daba. Vérifie ta connexion puis réessaie. Aucun score fictif ne sera affiché.</p>`;
   }
 }
@@ -219,10 +220,10 @@ async function showMatchDetails(slug) {
     const hs = root.home_score ?? root.score?.home ?? root.goals?.home;
     const as = root.away_score ?? root.score?.away ?? root.goals?.away;
     const sections = collectDetailSections(data);
-    content.innerHTML = `<h2 id="match-details-title">${esc(home)} ${hs == null ? '' : esc(hs)} - ${as == null ? '' : esc(as)} ${esc(away)}</h2>${sections.length ? sections.join('') : '<p class="data-message">L’API a renvoyé les détails du match, mais les champs buteurs/statistiques/lineups ne sont pas disponibles dans cette réponse.</p>'}<p class="sportscore-credit">Données fournies par <a href="https://www.api-football.com/" target="_blank" rel="noopener">API-Football</a></p>`;
+    content.innerHTML = `<h2 id="match-details-title">${esc(home)} ${hs == null ? '' : esc(hs)} - ${as == null ? '' : esc(as)} ${esc(away)}</h2>${sections.length ? sections.join('') : '<p class="data-message">L’API a renvoyé les détails du match, mais les champs buteurs/statistiques/lineups ne sont pas disponibles dans cette réponse.</p>'}<p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" target="_blank" rel="dofollow">SportScore</a></p>`;
   } catch (error) {
     console.error('SportScore match details error:', error);
-    content.innerHTML = `<h2 id="match-details-title">Détails du match</h2><p class="data-message">Les détails de ce match ne sont pas disponibles actuellement. Réessaie plus tard.</p><p class="sportscore-credit">Données fournies par <a href="https://www.api-football.com/" target="_blank" rel="noopener">API-Football</a></p>`;
+    content.innerHTML = `<h2 id="match-details-title">Détails du match</h2><p class="data-message">Les détails de ce match ne sont pas disponibles actuellement. Réessaie plus tard.</p><p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" target="_blank" rel="dofollow">SportScore</a></p>`;
   }
 }
 
@@ -370,6 +371,14 @@ function dateOffset(days) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // SportScore requires a visible dofollow attribution link on pages using its API.
+  if (!document.getElementById('sportscore-attribution')) {
+    const credit = document.createElement('div');
+    credit.id = 'sportscore-attribution';
+    credit.style.cssText = 'text-align:center;padding:12px 8px;font-size:13px;color:#9fb0c8;';
+    credit.innerHTML = 'Football data powered by <a href="https://sportscore.com/" rel="dofollow" target="_blank" style="color:#39bfff;text-decoration:underline;">SportScore</a>';
+    document.body.appendChild(credit);
+  }
   const picker = document.getElementById('custom-date-picker');
   if (picker) picker.value = currentDateFilter;
   fetchMatchesFromAPI(currentDateFilter, false, currentSelectedLeague);
