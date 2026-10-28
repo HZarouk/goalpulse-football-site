@@ -1,7 +1,5 @@
-/* GOALPULSE — SportScore public API integration
- * No hard-coded API key and no fabricated fallback scores.
- */
-const SPORT_SCORE_BASE = 'https://sportscore.com';
+/* GOALPULSE — API-Football via secured Cloudflare Worker proxy. */
+const API_BASE = 'https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev';
 const SPORT = 'football';
 const API_CACHE_TTL_MS = 60_000;
 const apiCache = new Map();
@@ -38,16 +36,16 @@ const LEAGUE_NAMES = {
 };
 
 async function apiGet(path, params = {}) {
-  const url = new URL(path, SPORT_SCORE_BASE);
+  const url = new URL(path, API_BASE);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   });
-  url.searchParams.set('src', 'goalpulse');
+  
   const cacheKey = url.toString();
   const cached = apiCache.get(cacheKey);
   if (cached && Date.now() - cached.savedAt < API_CACHE_TTL_MS) return cached.data;
   const response = await fetch(cacheKey, { method: 'GET', headers: { 'Accept': 'application/json' } });
-  if (!response.ok) throw new Error(`SportScore HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`GoalPulse API HTTP ${response.status}`);
   const data = await response.json();
   apiCache.set(cacheKey, { savedAt: Date.now(), data });
   return data;
@@ -113,7 +111,7 @@ function matchesSelectedLeague(matches, leagueId) {
 async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, leagueId = currentSelectedLeague) {
   const container = document.getElementById('matches-container');
   if (!container) return;
-  container.innerHTML = `<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Chargement des données SportScore…</div>`;
+  container.innerHTML = `<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Chargement des données football…</div>`;
   liveOnly = isLive;
   try {
     let payload;
@@ -131,7 +129,7 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     if (leagueId !== 'all') normalised = matchesSelectedLeague(normalised, leagueId);
     renderMatches(normalised);
   } catch (error) {
-    console.error('SportScore fixtures error:', error);
+    console.error('GoalPulse fixtures error:', error);
     container.innerHTML = `<p class="data-message">Ma قدرناش نجيبو les matchs daba. Vérifie ta connexion puis réessaie. Aucun score fictif ne sera affiché.</p>`;
   }
 }
@@ -221,10 +219,10 @@ async function showMatchDetails(slug) {
     const hs = root.home_score ?? root.score?.home ?? root.goals?.home;
     const as = root.away_score ?? root.score?.away ?? root.goals?.away;
     const sections = collectDetailSections(data);
-    content.innerHTML = `<h2 id="match-details-title">${esc(home)} ${hs == null ? '' : esc(hs)} - ${as == null ? '' : esc(as)} ${esc(away)}</h2>${sections.length ? sections.join('') : '<p class="data-message">L’API a renvoyé les détails du match, mais les champs buteurs/statistiques/lineups ne sont pas disponibles dans cette réponse.</p>'}<p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" rel="dofollow" target="_blank">SportScore</a></p>`;
+    content.innerHTML = `<h2 id="match-details-title">${esc(home)} ${hs == null ? '' : esc(hs)} - ${as == null ? '' : esc(as)} ${esc(away)}</h2>${sections.length ? sections.join('') : '<p class="data-message">L’API a renvoyé les détails du match, mais les champs buteurs/statistiques/lineups ne sont pas disponibles dans cette réponse.</p>'}<p class="sportscore-credit">Données fournies par <a href="https://www.api-football.com/" target="_blank" rel="noopener">API-Football</a></p>`;
   } catch (error) {
     console.error('SportScore match details error:', error);
-    content.innerHTML = `<h2 id="match-details-title">Détails du match</h2><p class="data-message">Les détails de ce match ne sont pas disponibles actuellement. Réessaie plus tard.</p><p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" rel="dofollow" target="_blank">SportScore</a></p>`;
+    content.innerHTML = `<h2 id="match-details-title">Détails du match</h2><p class="data-message">Les détails de ce match ne sont pas disponibles actuellement. Réessaie plus tard.</p><p class="sportscore-credit">Données fournies par <a href="https://www.api-football.com/" target="_blank" rel="noopener">API-Football</a></p>`;
   }
 }
 
@@ -262,7 +260,7 @@ async function fetchHistory() {
       container.innerHTML = `<p class="data-message">Ma l9inach résultats historiques had simana lhad championnat. Jarrab « Tous les Matchs » bach tchouf résultats dyal ga3 les championnats.</p>`;
     }
   } catch (error) {
-    console.error('SportScore history error:', error);
+    console.error('GoalPulse history error:', error);
     container.innerHTML = `<p class="data-message">L’historique n’a pas pu être chargé. Réessaie plus tard; aucun résultat fictif ne sera affiché.</p>`;
   }
 }
@@ -303,7 +301,7 @@ async function fetchTopScorers(leagueId = '39') {
       list.innerHTML = '<li><span>Classement des buteurs indisponible actuellement.</span></li>';
     }
   } catch (error) {
-    console.warn('SportScore top scorers unavailable:', error);
+    console.warn('GoalPulse top scorers unavailable:', error);
     list.innerHTML = '<li><span>Classement des buteurs indisponible actuellement.</span></li>';
   }
 }
@@ -352,7 +350,7 @@ async function fetchStandings(leagueId = '39') {
       tbody.appendChild(tr);
     });
   } catch (error) {
-    console.error('SportScore standings error:', error);
+    console.error('GoalPulse standings error:', error);
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:15px">Le classement n’est pas disponible actuellement. Aucun classement fictif n’est affiché.</td></tr>`;
   }
 }
