@@ -1,5 +1,5 @@
 /* GOALPULSE — API-Football via secured Cloudflare Worker proxy. */
-const API_BASE = 'https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev';
+const API_BASE = 'https://goalpulse-api.mizouzarouk.workers.dev';
 const SPORT = 'football';
 const API_CACHE_TTL_MS = 60_000;
 const apiCache = new Map();
