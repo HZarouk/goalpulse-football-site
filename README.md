@@ -23,3 +23,8 @@
 
 ## Attribution
 Le lien "Powered by SportScore" (dofollow) doit rester visible dans le footer.
+
+## Actualités
+- Source: Google News RSS (recherche "football", FR). Endpoint: /api/news
+- Affichage: titre + source + date, lien vers l'article source (pas de contenu copié).
+- Usage commercial avec pubs: vérifier les conditions de Google News avant.

@@ -9,7 +9,7 @@ const UPSTREAM_TIMEOUT_MS = 8000;
 const TZ = 'Africa/Casablanca';
 const STALE_TTL = 7 * 24 * 3600;
 const KV_TTL = 30 * 24 * 3600;
-const TTL = { live: 60, today: 300, past: 86400, future: 3600, standings: 1800, scorers: 3600 };
+const TTL = { live: 60, today: 300, past: 86400, future: 3600, standings: 1800, scorers: 3600, news: 1800 };
 
 // slug : standings, topscorers et fixtures (competition=slug)
 // names / logoIds : utilisés seulement pour /api/live
@@ -250,6 +250,46 @@ function getScorers(key) {
   });
 }
 
+const NEWS_URL = 'https://news.google.com/rss/search?q=football&hl=fr&gl=FR&ceid=FR:fr';
+
+const decodeXml = (s) => s
+  .replace(/<!\[CDATA\[|\]\]>/g, '')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+  .trim();
+
+function parseRss(xml) {
+  const items = [];
+  const itemRe = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = itemRe.exec(xml))) {
+    const block = m[1];
+    const pick = (tag) => {
+      const r = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
+      return r ? decodeXml(r[1]) : '';
+    };
+    items.push({ title: pick('title'), link: pick('link'), date: pick('pubDate'), source: pick('source') });
+  }
+  return items.filter(i => i.title && i.link);
+}
+
+function getNews() {
+  return cachedJSON('news:global', TTL.news, async () => {
+    let res;
+    try {
+      res = await fetch(NEWS_URL, {
+        headers: { 'User-Agent': 'GoalPulse/1.0' },
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      });
+    } catch (err) {
+      throw new HttpError(502, 'Flux actualités injoignable');
+    }
+    if (!res.ok) throw new HttpError(502, `Flux actualités: HTTP ${res.status}`);
+    const xml = await res.text();
+    return { items: parseRss(xml).slice(0, 15) };
+  });
+}
+
 function resolveLeague(v) {
   if (!LEAGUES[v]) throw new HttpError(400, `league doit être: ${Object.keys(LEAGUES).join(', ')}`);
   return v;
@@ -283,6 +323,11 @@ async function route(url, env) {
     const league = resolveLeague(url.searchParams.get('league') || '');
     const r = await getScorers(league);
     return { payload: { ...r.data, meta: { league, provider: 'SportScore' } }, cache: r.cache };
+  }
+
+  if (path === '/api/news') {
+    const r = await getNews();
+    return { payload: { ...r.data, meta: { provider: 'Google News RSS' } }, cache: r.cache };
   }
 
   // Admin : archive un jour dans KV (protégé par ADMIN_KEY)
