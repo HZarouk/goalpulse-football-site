@@ -1,4 +1,4 @@
-/* GOALPULSE — SportScore public API (no API-Football key / no Worker required). */
+/* GOALPULSE — direct SportScore public API; no API-Football or Cloudflare Worker. */
 const API_BASE = 'https://sportscore.com';
 const SPORT = 'football';
 const API_CACHE_TTL_MS = 60_000;
@@ -41,7 +41,6 @@ async function apiGet(path, params = {}) {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   });
   
-  url.searchParams.set('src', 'goalpulse-football-site');
   const cacheKey = url.toString();
   const cached = apiCache.get(cacheKey);
   if (cached && Date.now() - cached.savedAt < API_CACHE_TTL_MS) return cached.data;
@@ -67,7 +66,7 @@ function normaliseMatch(raw) {
   const awayScore = m.away_score ?? m.score?.away ?? m.goals?.away ?? m.scores?.away;
   const status = m.status_text ?? m.status ?? m.fixture?.status?.short ?? 'Scheduled';
   const time = m.time ?? m.kickoff ?? m.date ?? m.fixture?.date;
-  const league = m.competition?.name ?? (typeof m.competition === 'string' ? m.competition : undefined) ?? m.league?.name ?? (typeof m.league === 'string' ? m.league : undefined) ?? m.tournament?.name ?? m.competition_name ?? (currentSelectedLeague !== 'all' ? (LEAGUE_NAMES[currentSelectedLeague] || '') : 'Football');
+  const league = m.competition?.name ?? (typeof m.competition === 'string' ? m.competition : undefined) ?? m.competition_name ?? m.league?.name ?? (typeof m.league === 'string' ? m.league : undefined) ?? m.tournament?.name ?? (currentSelectedLeague !== 'all' ? (LEAGUE_NAMES[currentSelectedLeague] || '') : 'Football');
   const leagueSlug = m.competition?.slug ?? m.competition_slug ?? m.league?.slug ?? '';
   const homeLogo = m.home_logo ?? m.teams?.home?.logo ?? m.homeTeam?.logo ?? '';
   const awayLogo = m.away_logo ?? m.teams?.away?.logo ?? m.awayTeam?.logo ?? '';
@@ -90,7 +89,7 @@ function extractMatchRows(payload) {
   const candidates = [
     payload, payload?.matches, payload?.fixtures, payload?.results,
     payload?.data, payload?.data?.matches, payload?.data?.fixtures,
-    payload?.response, payload?.data?.results
+    payload?.response, payload?.data?.results, payload?.fixtures?.data, payload?.data?.fixtures?.data
   ];
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) return candidate;
@@ -121,7 +120,7 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     } else {
       // Fetch the selected UTC date without a competition slug first. This
       // avoids an invalid/unsupported competition slug forcing an empty list.
-      payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date: dateStr, limit: 200 });
+      payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date: dateStr, limit: 200, ...(leagueId !== 'all' ? { competition: LEAGUE_SLUGS[leagueId] } : {}) });
     }
     let matches = extractMatchRows(payload);
     let normalised = matches.map(normaliseMatch);
@@ -130,8 +129,8 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     if (leagueId !== 'all') normalised = matchesSelectedLeague(normalised, leagueId);
     renderMatches(normalised);
   } catch (error) {
-    console.error('GoalPulse / SportScore fixtures error:', error);
-    container.innerHTML = `<p class="data-message">Ma قدرناش نجيبو les matchs daba. Vérifie ta connexion puis réessaie. Aucun score fictif ne sera affiché.</p>`;
+    console.error('GoalPulse fixtures error:', error);
+    container.innerHTML = `<p class="data-message">Impossible de charger les matchs pour le moment. Vérifiez votre connexion puis réessayez. Aucun score fictif ne sera affiché.</p>`;
   }
 }
 
@@ -179,7 +178,7 @@ function ensureDetailsModal() {
 }
 function showDetailsUnavailable() {
   const modal = ensureDetailsModal();
-  document.getElementById('match-details-content').innerHTML = '<p class="data-message">SportScore ma rje3ch slug dyal had match, donc détails ma متاحينش حالياً.</p>';
+  document.getElementById('match-details-content').innerHTML = '<p class="data-message">SportScore n’a pas fourni de référence pour ce match ; les détails ne sont pas disponibles.</p>';
   modal.classList.add('open');
 }
 function collectDetailSections(data) {
@@ -220,10 +219,10 @@ async function showMatchDetails(slug) {
     const hs = root.home_score ?? root.score?.home ?? root.goals?.home;
     const as = root.away_score ?? root.score?.away ?? root.goals?.away;
     const sections = collectDetailSections(data);
-    content.innerHTML = `<h2 id="match-details-title">${esc(home)} ${hs == null ? '' : esc(hs)} - ${as == null ? '' : esc(as)} ${esc(away)}</h2>${sections.length ? sections.join('') : '<p class="data-message">L’API a renvoyé les détails du match, mais les champs buteurs/statistiques/lineups ne sont pas disponibles dans cette réponse.</p>'}<p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" target="_blank" rel="dofollow">SportScore</a></p>`;
+    content.innerHTML = `<h2 id="match-details-title">${esc(home)} ${hs == null ? '' : esc(hs)} - ${as == null ? '' : esc(as)} ${esc(away)}</h2>${sections.length ? sections.join('') : '<p class="data-message">L’API a renvoyé les détails du match, mais les champs buteurs/statistiques/lineups ne sont pas disponibles dans cette réponse.</p>'}<p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" target="_blank" rel="dofollow noopener">SportScore</a></p>`;
   } catch (error) {
     console.error('SportScore match details error:', error);
-    content.innerHTML = `<h2 id="match-details-title">Détails du match</h2><p class="data-message">Les détails de ce match ne sont pas disponibles actuellement. Réessaie plus tard.</p><p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" target="_blank" rel="dofollow">SportScore</a></p>`;
+    content.innerHTML = `<h2 id="match-details-title">Détails du match</h2><p class="data-message">Les détails de ce match ne sont pas disponibles actuellement. Réessaie plus tard.</p><p class="sportscore-credit">Données fournies par <a href="https://sportscore.com/" target="_blank" rel="dofollow noopener">SportScore</a></p>`;
   }
 }
 
@@ -243,7 +242,7 @@ async function fetchHistory() {
     for (const date of dates) {
       // Always query the date without a competition filter, then filter locally.
       // Some competition slugs are not recognized by the public API.
-      const payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date, limit: 200 });
+      const payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date, limit: 200, ...(currentSelectedLeague !== 'all' ? { competition: LEAGUE_SLUGS[currentSelectedLeague] } : {}) });
       const rows = extractMatchRows(payload);
       const normalised = rows.map(normaliseMatch);
       collected.push(...matchesSelectedLeague(normalised, currentSelectedLeague));
@@ -258,7 +257,7 @@ async function fetchHistory() {
     }).sort((a,b) => new Date(b.time || 0) - new Date(a.time || 0));
     renderMatches(matches);
     if (!matches.length) {
-      container.innerHTML = `<p class="data-message">Ma l9inach résultats historiques had simana lhad championnat. Jarrab « Tous les Matchs » bach tchouf résultats dyal ga3 les championnats.</p>`;
+      container.innerHTML = `<p class="data-message">Aucun résultat historique trouvé pour ce championnat. Essayez « Tous les Matchs » pour consulter les autres compétitions.</p>`;
     }
   } catch (error) {
     console.error('GoalPulse history error:', error);
@@ -371,14 +370,6 @@ function dateOffset(days) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // SportScore requires a visible dofollow attribution link on pages using its API.
-  if (!document.getElementById('sportscore-attribution')) {
-    const credit = document.createElement('div');
-    credit.id = 'sportscore-attribution';
-    credit.style.cssText = 'text-align:center;padding:12px 8px;font-size:13px;color:#9fb0c8;';
-    credit.innerHTML = 'Football data powered by <a href="https://sportscore.com/" rel="dofollow" target="_blank" style="color:#39bfff;text-decoration:underline;">SportScore</a>';
-    document.body.appendChild(credit);
-  }
   const picker = document.getElementById('custom-date-picker');
   if (picker) picker.value = currentDateFilter;
   fetchMatchesFromAPI(currentDateFilter, false, currentSelectedLeague);
