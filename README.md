@@ -1,17 +1,21 @@
-# GoalPulse Football — SportScore Edition
+# GoalPulse: Botola Pro + Ligue 1 (SportScore)
 
-Version statique conçue pour GitHub Pages. Les données sont demandées directement à l’API publique SportScore : aucun compte API-Football et aucun Cloudflare Worker ne sont requis pour cette version.
+## Fichiers
+- `worker.js`, `wrangler.toml`: proxy Cloudflare Worker (cache + stale fallback).
+- `script.js`: front-end.
+- `index.html`, `styles.css`: interface (index.html modifié: Botola + Ligue 1 bark).
 
-## Publication
-1. Décompressez le dossier.
-2. Téléversez `index.html`, `styles.css` et `script.js` dans la racine du dépôt GitHub Pages.
-3. Committez les changements, puis rechargez le site avec `Ctrl + F5`.
+## Deploy
+1. Worker: Cloudflare → goalpulse-api → Edit code → paste `worker.js` → Deploy.
+2. GitHub Pages: upload `index.html`, `script.js`, `styles.css` (et `worker.js` optionnel).
+3. Ctrl + F5 après 2 dqayq.
 
-## Données et limites
-- Les matchs sont chargés depuis SportScore (fixtures datées et liste des matchs).
-- Classement et buteurs sont demandés via les endpoints publics SportScore. Leur disponibilité dépend des compétitions/slugs et de la couverture fournie par la source.
-- Les actualités restent explicitement indiquées comme non connectées tant qu’une source éditoriale vérifiée n’est pas configurée.
-- Aucun résultat, classement ou titre d’actualité fictif n’est généré.
-- Conservez le lien visible « Powered by SportScore » conformément aux conditions de l’API.
+## Tests
+- /health
+- /api/matches?date=YYYY-MM-DD
+- /api/standings?league=botola
+- /api/standings?league=ligue1
+- /api/topscorers?league=botola
 
-Documentation : https://sportscore.com/developers/api/
+## Attribution
+Lien "Powered by SportScore" (dofollow) obligatoire, lazem ybqa f footer.

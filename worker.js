@@ -1,66 +1,252 @@
-const LEAGUES = new Set([39, 140, 2, 135, 78, 61, 200]);
-const LEAGUE_NAMES = {39:'Premier League',140:'La Liga',2:'UEFA Champions League',135:'Serie A',78:'Bundesliga',61:'Ligue 1',200:'Botola Pro'};
-const SLUG_IDS = {'premier-league':39,'english-premier-league':39,'la-liga':140,'laliga':140,'spanish-la-liga':140,'uefa-champions-league':2,'champions-league':2,'serie-a':135,'serie-a-italy':135,'italian-serie-a':135,'bundesliga':78,'german-bundesliga':78,'ligue-1':61,'ligue-1-france':61,'french-ligue-1':61,'botola-pro':200,'botola':200};
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Content-Type': 'application/json; charset=utf-8' };
-const json = (data, status=200) => new Response(JSON.stringify(data), {status, headers:cors});
-function seasonFor(dateText) { const d = dateText ? new Date(dateText+'T12:00:00Z') : new Date(); return d.getUTCMonth() >= 6 ? d.getUTCFullYear() : d.getUTCFullYear()-1; }
-function mapFixture(x) {
- const f=x.fixture||{}, t=x.teams||{}, g=x.goals||{}, l=x.league||{};
- return { id:f.id, slug:String(f.id||''), time:f.date, status:f.status?.long || f.status?.short || 'Scheduled', status_text:f.status?.short || f.status?.long || 'Scheduled', home:t.home?.name||'Home', away:t.away?.name||'Away', home_score:g.home, away_score:g.away, home_logo:t.home?.logo||'', away_logo:t.away?.logo||'', competition:{name:l.name||'Football',slug:String(l.id||'')}, league:l.name||'Football', league_id:l.id, league_slug:String(l.id||'') };
+// GoalPulse: proxy SportScore (Botola Pro + Ligue 1)
+const ALLOWED_ORIGINS = ['https://hzarouk.github.io'];
+const SPORTSCORE = 'https://sportscore.com';
+const TZ = 'Africa/Casablanca';
+const STALE_TTL = 7 * 24 * 3600;
+const TTL = { live: 60, today: 300, past: 86400, future: 3600, standings: 1800, scorers: 3600 };
+
+// Compétitions suivies. Match bi smiya dyal championnat wla bi ID dyal logo.
+const LEAGUES = {
+  botola: {
+    name: 'Botola Pro',
+    slug: 'the-botola-pro',
+    names: ['The Botola Pro'],
+    logoIds: ['c997cac5e146bab6891fd0aef3b943f0'],
+  },
+  ligue1: {
+    name: 'Ligue 1',
+    slug: 'french-ligue-1',
+    names: ['French Ligue 1'],
+    logoIds: ['6e13222836235b121c1af3bc3055e76b'],
+  },
+};
+
+const inflight = new Map();
+
+class HttpError extends Error {
+  constructor(status, message) { super(message); this.status = status; }
 }
-function mapStandings(data) {
- const rows=data?.response?.[0]?.league?.standings?.flat?.() || [];
- return rows.map(r=>({rank:r.rank,team:{name:r.team?.name,logo:r.team?.logo},played:r.all?.played,wins:r.all?.win,draws:r.all?.draw,losses:r.all?.lose,goals_for:r.all?.goals?.for,goals_against:r.all?.goals?.against,goal_difference:r.goalsDiff,points:r.points}));
-}
-function mapScorers(data) { return (data?.response||[]).map(r=>({player:{name:r.player?.name},team:{name:r.statistics?.[0]?.team?.name},goals:r.statistics?.[0]?.goals?.total})).filter(r=>r.player.name && r.goals!==null && r.goals!==undefined); }
-export default {
- async fetch(request, env) {
-  if (request.method==='OPTIONS') return new Response(null,{status:204,headers:cors});
-  const url=new URL(request.url), path=url.pathname;
-  if (!env.API_FOOTBALL_KEY) return json({error:'API_FOOTBALL_KEY secret is not configured'},500);
-  const isFixturePath = path==='/api/v1/fixtures/' || path==='/api/widget/matches/';
-  const rawLeague=url.searchParams.get('league') || url.searchParams.get('slug') || (isFixturePath ? 'all' : '39');
-  const leagueRaw = SLUG_IDS[String(rawLeague).toLowerCase()] || rawLeague;
-  const league=Number(leagueRaw);
-  const season=Number(url.searchParams.get('season')) || seasonFor(url.searchParams.get('date'));
-  const date=url.searchParams.get('date') || new Date().toISOString().slice(0,10);
-  const api=async (endpoint,params={})=>{
-    const u=new URL('https://v3.football.api-sports.io/'+endpoint);
-    for(const [k,v] of Object.entries(params)) if(v!==undefined && v!==null && v!=='') u.searchParams.set(k,String(v));
-    const res=await fetch(u,{headers:{'x-apisports-key':env.API_FOOTBALL_KEY}});
-    const body=await res.json().catch(()=>({}));
-    if(!res.ok || (body.errors && Object.keys(body.errors).length)) return {error:body.errors||`API-Football HTTP ${res.status}`,status:res.status||502};
-    return {body,headers:res.headers};
+
+const casaToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+const addDays = (iso, n) => {
+  const d = new Date(iso + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+function corsHeaders(origin) {
+  const h = {
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Expose-Headers': 'X-Cache',
+    'Vary': 'Origin',
   };
+  if (origin && ALLOWED_ORIGINS.includes(origin)) h['Access-Control-Allow-Origin'] = origin;
+  return h;
+}
+
+function jsonResponse(data, status, cors, extra = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      ...cors,
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=60',
+      ...extra,
+    },
+  });
+}
+
+// ---------- Upstream ----------
+async function sportscore(path, params) {
+  const u = new URL(path, SPORTSCORE);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
+  const res = await fetch(u, { headers: { Accept: 'application/json', 'User-Agent': 'GoalPulse/1.0' } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.error) throw new HttpError(502, `SportScore: ${body.error || res.status}`);
+  return body;
+}
+
+// ---------- Mapping ----------
+function leagueOf(competition, logo) {
+  for (const [key, L] of Object.entries(LEAGUES)) {
+    if (L.names.includes(competition) || L.logoIds.some(id => (logo || '').includes(id))) return key;
+  }
+  return null;
+}
+
+function mapMatch(x) {
+  const key = leagueOf(x.competition, x.competition_logo);
+  if (!key) return null;
+  return {
+    id: x.url ? x.url.split('/').filter(Boolean).pop() : null,
+    url: x.url || null,
+    league_key: key,
+    league_name: LEAGUES[key].name,
+    home: x.home,
+    away: x.away,
+    home_logo: x.home_logo || '',
+    away_logo: x.away_logo || '',
+    home_score: x.home_score ?? null,
+    away_score: x.away_score ?? null,
+    status: x.status,
+    status_text: x.status_text,
+    time: x.time,
+  };
+}
+
+function mapStandings(body) {
+  return (body.tables || []).flatMap(t => t.rows || []).map(r => ({
+    rank: r.pos,
+    team: r.team,
+    team_logo: r.team_logo || '',
+    played: r.p, wins: r.w, draws: r.d, losses: r.l,
+    goals_for: r.gf, goals_against: r.ga, goal_difference: r.gd,
+    points: r.pts,
+  }));
+}
+
+function mapScorers(body) {
+  return (body.scorers || [])
+    .filter(s => s.player && s.player !== 'Unknown' && s.goals != null)
+    .map(s => ({
+      rank: s.rank,
+      player: s.player,
+      team: s.team,
+      team_logo: s.team_logo || '',
+      goals: s.goals,
+      assists: s.assists ?? 0,
+      matches: s.matches ?? null,
+    }));
+}
+
+// ---------- Cache (fresh + stale fallback + dedupe) ----------
+async function cachedJSON(key, ttl, load) {
+  const cache = caches.default;
+  const freshReq = new Request(`https://cache.goalpulse.internal/fresh/${key}`);
+  const staleReq = new Request(`https://cache.goalpulse.internal/stale/${key}`);
+
+  const hit = await cache.match(freshReq);
+  if (hit) return { data: await hit.json(), cache: 'HIT' };
+
+  if (!inflight.has(key)) {
+    const p = (async () => {
+      const data = await load();
+      const body = JSON.stringify(data);
+      await Promise.all([
+        cache.put(freshReq, new Response(body, {
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${ttl}` },
+        })),
+        cache.put(staleReq, new Response(body, {
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${STALE_TTL}` },
+        })),
+      ]);
+      return data;
+    })().finally(() => inflight.delete(key));
+    inflight.set(key, p);
+  }
+
   try {
-   if(path==='/health') return json({ok:true,provider:'API-Football',keyConfigured:true});
-   if(path==='/api/v1/fixtures/' || path==='/api/widget/matches/') {
-    const isLive=path==='/api/widget/matches/';
-    const params=isLive?{live:'all'}:{date,season};
-    if(leagueRaw!=='all' && LEAGUES.has(league)) params.league=league;
-    if(!isLive && leagueRaw==='all') { /* date-wide fixtures; no league filter */ }
-    const result=await api('fixtures',params); if(result.error) return json({error:result.error},result.status||502);
-    let rows=(result.body.response||[]).map(mapFixture);
-    if(leagueRaw!=='all' && LEAGUES.has(league)) rows=rows.filter(m=>Number(m.league_id)===league);
-    return json({matches:rows,fixtures:rows,results:rows, response:rows, meta:{provider:'API-Football',season,league:leagueRaw,remaining:result.headers?.get('x-ratelimit-requests-remaining')}});
-   }
-   if(path==='/api/widget/standings/' || path==='/api/v1/standings/') {
-    if(!LEAGUES.has(league)) return json({error:'Unsupported league ID'},400);
-    const result=await api('standings',{league,season}); if(result.error) return json({error:result.error},result.status||502);
-    const rows=mapStandings(result.body); return json({standings:rows,table:rows,rows,meta:{provider:'API-Football',season,league}});
-   }
-   if(path==='/api/widget/topscorers/' || path==='/api/v1/topscorers/') {
-    if(!LEAGUES.has(league)) return json({error:'Unsupported league ID'},400);
-    const result=await api('players/topscorers',{league,season}); if(result.error) return json({error:result.error},result.status||502);
-    const rows=mapScorers(result.body); return json({topscorers:rows,top_scorers:rows,players:rows,rows,meta:{provider:'API-Football',season,league}});
-   }
-   if(path==='/api/widget/match/') {
-    const id=url.searchParams.get('slug')||url.searchParams.get('id'); if(!id || !/^\d+$/.test(id)) return json({error:'A valid fixture ID is required'},400);
-    const result=await api('fixtures',{id}); if(result.error) return json({error:result.error},result.status||502);
-    const item=result.body.response?.[0]; if(!item) return json({error:'Fixture not found'},404);
-    const m=mapFixture(item); return json({match:{...m,events:[],timeline:[],statistics:[],lineups:[],note:'Detailed events/lineups require additional API coverage.'}});
-   }
-   return json({error:'Not found',available:['/health','/api/v1/fixtures/','/api/widget/matches/','/api/widget/standings/','/api/widget/topscorers/','/api/widget/match/']},404);
-  } catch(e) { return json({error:'Proxy failure',message:String(e?.message||e)},502); }
- }
+    return { data: await inflight.get(key), cache: 'MISS' };
+  } catch (err) {
+    const old = await cache.match(staleReq);
+    if (old) return { data: await old.json(), cache: 'STALE' };
+    throw err;
+  }
+}
+
+// ---------- Data getters ----------
+function dayTtl(date) {
+  const t = casaToday();
+  return date < t ? TTL.past : date === t ? TTL.today : TTL.future;
+}
+
+function getMatchesForDate(date) {
+  return cachedJSON(`matches:${date}`, dayTtl(date), async () => {
+    const body = await sportscore('/api/v1/fixtures/', { sport: 'football', date, limit: 200 });
+    return { matches: (body.matches || []).map(mapMatch).filter(Boolean) };
+  });
+}
+
+function getLive() {
+  return cachedJSON('live', TTL.live, async () => {
+    const body = await sportscore('/api/widget/matches/', { sport: 'football', limit: 50 });
+    return { matches: (body.matches || []).map(mapMatch).filter(Boolean) };
+  });
+}
+
+function getStandings(key) {
+  return cachedJSON(`standings:${key}`, TTL.standings, async () => {
+    const body = await sportscore('/api/widget/standings/', { sport: 'football', slug: LEAGUES[key].slug });
+    return { standings: mapStandings(body) };
+  });
+}
+
+function getScorers(key) {
+  return cachedJSON(`scorers:${key}`, TTL.scorers, async () => {
+    const body = await sportscore('/api/widget/topscorers/', { sport: 'football', slug: LEAGUES[key].slug, stat: 'goals' });
+    return { scorers: mapScorers(body) };
+  });
+}
+
+function resolveLeague(v) {
+  if (!LEAGUES[v]) throw new HttpError(400, 'league doit être botola ou ligue1');
+  return v;
+}
+
+// ---------- Routing ----------
+async function route(url) {
+  const path = url.pathname;
+
+  if (path === '/api/matches') {
+    const date = url.searchParams.get('date') || casaToday();
+    const today = casaToday();
+    if (!isDate(date)) throw new HttpError(400, 'date invalide (YYYY-MM-DD)');
+    if (date < addDays(today, -14) || date > addDays(today, 7)) throw new HttpError(400, 'date hors plage');
+    const r = await getMatchesForDate(date);
+    return { payload: { ...r.data, meta: { date, provider: 'SportScore' } }, cache: r.cache };
+  }
+
+  if (path === '/api/live') {
+    const r = await getLive();
+    return { payload: { ...r.data, meta: { provider: 'SportScore' } }, cache: r.cache };
+  }
+
+  if (path === '/api/standings') {
+    const league = resolveLeague(url.searchParams.get('league') || '');
+    const r = await getStandings(league);
+    return { payload: { ...r.data, meta: { league, provider: 'SportScore' } }, cache: r.cache };
+  }
+
+  if (path === '/api/topscorers') {
+    const league = resolveLeague(url.searchParams.get('league') || '');
+    const r = await getScorers(league);
+    return { payload: { ...r.data, meta: { league, provider: 'SportScore' } }, cache: r.cache };
+  }
+
+  throw new HttpError(404, 'Not found');
+}
+
+// ---------- Entry ----------
+export default {
+  async fetch(request) {
+    const cors = corsHeaders(request.headers.get('Origin'));
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    if (request.method !== 'GET') return jsonResponse({ error: 'Method not allowed' }, 405, cors);
+
+    const url = new URL(request.url);
+
+    if (url.pathname === '/health') {
+      return jsonResponse({ ok: true, provider: 'SportScore', leagues: Object.keys(LEAGUES) }, 200, cors);
+    }
+
+    try {
+      const { payload, cache } = await route(url);
+      return jsonResponse(payload, 200, cors, { 'X-Cache': cache });
+    } catch (e) {
+      const status = e instanceof HttpError ? e.status : 502;
+      return jsonResponse({ error: e.message || 'Proxy failure' }, status, cors);
+    }
+  },
 };

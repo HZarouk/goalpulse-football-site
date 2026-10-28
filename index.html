@@ -33,13 +33,8 @@
             <h3><i class="fa-solid fa-trophy"></i> Championnats</h3>
             <ul class="league-list" id="league-selector">
                 <li class="league-item active" data-league="all"><i class="fa-solid fa-globe"></i> Tous les Matchs</li>
-                <li class="league-item" data-league="39">Premier League</li>
-                <li class="league-item" data-league="140">La Liga</li>
-                <li class="league-item" data-league="2">Champions League</li>
-                <li class="league-item" data-league="135">Serie A</li>
-                <li class="league-item" data-league="78">Bundesliga</li>
-                <li class="league-item" data-league="61">Ligue 1</li>
-                <li class="league-item" data-league="200">Botola Pro</li>
+                <li class="league-item" data-league="botola">Botola Pro</li>
+                <li class="league-item" data-league="ligue1">Ligue 1</li>
             </ul>
 
             <div class="api-key-box">
@@ -81,12 +76,8 @@
                 <div class="section-header">
                     <h2><i class="fa-solid fa-list-ol"></i> Classement des Championnats (Standings)</h2>
                     <select id="standings-league-select" class="league-select-dropdown">
-                        <option value="39">Premier League (Angleterre)</option>
-                        <option value="140">La Liga (Espagne)</option>
-                        <option value="135">Serie A (Italie)</option>
-                        <option value="78">Bundesliga (Allemagne)</option>
-                        <option value="61">Ligue 1 (France)</option>
-                        <option value="200">Botola Pro (Maroc)</option>
+                        <option value="botola">Botola Pro (Maroc)</option>
+                        <option value="ligue1">Ligue 1 (France)</option>
                     </select>
                 </div>
 
@@ -129,7 +120,7 @@
             </div>
 
             <div class="widget-box">
-                <h3><i class="fa-solid fa-fire"></i> Top Buteurs (Premier League)</h3>
+                <h3 id="scorers-title"><i class="fa-solid fa-fire"></i> Top Buteurs</h3>
                 <ul class="top-scorers-list" id="top-scorers-list">
                     <li><span>Chargement des données officielles…</span></li>
                 </ul>
