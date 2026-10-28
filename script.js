@@ -8,7 +8,7 @@ const LEAGUE_NAMES = {
   seriea: 'Serie A',
 };
 const LIVE_REFRESH_MS = 120000;
-const CLIENT_TIMEOUT_MS = 10000;
+const CLIENT_TIMEOUT_MS = 20000;
 
 const state = { mode: 'day', date: '', league: 'all' };
 let liveTimer = null;
