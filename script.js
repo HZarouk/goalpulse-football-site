@@ -1,6 +1,12 @@
 const API_BASE = 'https://goalpulse-api.mizouzarouk.workers.dev';
 const TZ = 'Africa/Casablanca';
-const LEAGUE_NAMES = { botola: 'Botola Pro', ligue1: 'Ligue 1' };
+const LEAGUE_NAMES = {
+  botola: 'Botola Pro',
+  ligue1: 'Ligue 1',
+  bundesliga: 'Bundesliga',
+  laliga: 'La Liga',
+  seriea: 'Serie A',
+};
 const LIVE_REFRESH_MS = 120000;
 
 const state = { mode: 'day', date: '', league: 'all' };
@@ -16,7 +22,8 @@ const shiftDate = (iso, n) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
-const fmtHour = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+const fmtHour = (iso) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })
+  .format(new Date(iso));
 const fmtDay = (iso) => new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
   .format(new Date(iso + 'T12:00:00Z'));
 
@@ -102,6 +109,7 @@ async function refreshMatches() {
 async function loadStandings() {
   const league = $('standings-league-select').value;
   const tbody = $('standings-tbody');
+  tbody.innerHTML = `<tr><td colspan="9">Chargement…</td></tr>`;
   try {
     const { standings = [] } = await api('/api/standings', { league });
     tbody.innerHTML = standings.length ? standings.map(r => `
@@ -122,8 +130,9 @@ async function loadStandings() {
 
 async function loadScorers() {
   const league = $('standings-league-select').value;
-  $('scorers-title').innerHTML = `<i class="fa-solid fa-fire"></i> Top Buteurs (${LEAGUE_NAMES[league]})`;
+  $('scorers-title').innerHTML = `<i class="fa-solid fa-fire"></i> Top Buteurs (${esc(LEAGUE_NAMES[league])})`;
   const ul = $('top-scorers-list');
+  ul.innerHTML = `<li><span>Chargement…</span></li>`;
   try {
     const { scorers = [] } = await api('/api/topscorers', { league });
     ul.innerHTML = scorers.length
@@ -162,6 +171,18 @@ function setMode(mode, date, btnId) {
   refreshMatches();
 }
 
+function selectLeague(key) {
+  state.league = key;
+  document.querySelectorAll('#league-selector .league-item')
+    .forEach(li => li.classList.toggle('active', li.dataset.league === key));
+  if (key !== 'all') {
+    $('standings-league-select').value = key;
+    loadStandings();
+    loadScorers();
+  }
+  refreshMatches();
+}
+
 function init() {
   state.date = todayCasa();
   $('custom-date-picker').value = state.date;
@@ -174,17 +195,7 @@ function init() {
   $('btn-live').onclick = () => setMode('live', null, 'btn-live');
 
   document.querySelectorAll('#league-selector .league-item').forEach(li => {
-    li.addEventListener('click', () => {
-      document.querySelectorAll('#league-selector .league-item')
-        .forEach(x => x.classList.toggle('active', x === li));
-      state.league = li.dataset.league;
-      if (state.league !== 'all') {
-        $('standings-league-select').value = state.league;
-        loadStandings();
-        loadScorers();
-      }
-      refreshMatches();
-    });
+    li.addEventListener('click', () => selectLeague(li.dataset.league));
   });
 
   $('standings-league-select').onchange = () => { loadStandings(); loadScorers(); };

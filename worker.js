@@ -1,11 +1,16 @@
-// GoalPulse: proxy SportScore (Botola Pro + Ligue 1)
-const ALLOWED_ORIGINS = ['https://hzarouk.github.io'];
+// GoalPulse — proxy SportScore (Botola, Ligue 1, Bundesliga, La Liga, Serie A)
+const ALLOWED_ORIGINS = [
+  'https://hzarouk.github.io',
+  'http://localhost:3000',
+  'http://127.0.0.1:5500',
+];
 const SPORTSCORE = 'https://sportscore.com';
 const TZ = 'Africa/Casablanca';
 const STALE_TTL = 7 * 24 * 3600;
 const TTL = { live: 60, today: 300, past: 86400, future: 3600, standings: 1800, scorers: 3600 };
 
-// Compétitions suivies. Match bi smiya dyal championnat wla bi ID dyal logo.
+// slug: standings, topscorers et fixtures (competition=slug)
+// names / logoIds: utilisés seulement pour /api/live
 const LEAGUES = {
   botola: {
     name: 'Botola Pro',
@@ -18,6 +23,24 @@ const LEAGUES = {
     slug: 'french-ligue-1',
     names: ['French Ligue 1'],
     logoIds: ['6e13222836235b121c1af3bc3055e76b'],
+  },
+  bundesliga: {
+    name: 'Bundesliga',
+    slug: 'bundesliga',
+    names: ['Bundesliga'],
+    logoIds: ['0c6a25cd746e802296d9064b4504179d'],
+  },
+  laliga: {
+    name: 'La Liga',
+    slug: 'spanish-la-liga',
+    names: ['Spanish La Liga'],
+    logoIds: ['1fbbb4be3b47d9465c5badecc3122e07'],
+  },
+  seriea: {
+    name: 'Serie A',
+    slug: 'italian-serie-a',
+    names: ['Italian Serie A'],
+    logoIds: ['6b38f4015a6b3309ad9462e6ce27ae99'],
   },
 };
 
@@ -76,8 +99,9 @@ function leagueOf(competition, logo) {
   return null;
 }
 
-function mapMatch(x) {
-  const key = leagueOf(x.competition, x.competition_logo);
+// forcedKey: clé du championnat quand la requête est filtrée par competition=slug
+function mapMatch(x, forcedKey) {
+  const key = forcedKey || leagueOf(x.competition, x.competition_logo);
   if (!key) return null;
   return {
     id: x.url ? x.url.split('/').filter(Boolean).pop() : null,
@@ -162,17 +186,28 @@ function dayTtl(date) {
   return date < t ? TTL.past : date === t ? TTL.today : TTL.future;
 }
 
+// Un appel par championnat. Si un championnat échoue, les autres restent affichés.
 function getMatchesForDate(date) {
   return cachedJSON(`matches:${date}`, dayTtl(date), async () => {
-    const body = await sportscore('/api/v1/fixtures/', { sport: 'football', date, limit: 200 });
-    return { matches: (body.matches || []).map(mapMatch).filter(Boolean) };
+    const results = await Promise.allSettled(
+      Object.entries(LEAGUES).map(([key, L]) =>
+        sportscore('/api/v1/fixtures/', {
+          sport: 'football', date, competition: L.slug, limit: 200,
+        }).then(body => (body.matches || []).map(m => mapMatch(m, key)).filter(Boolean))
+      )
+    );
+    if (results.every(r => r.status === 'rejected')) {
+      throw new HttpError(502, 'SportScore indisponible');
+    }
+    const matches = results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
+    return { matches };
   });
 }
 
 function getLive() {
   return cachedJSON('live', TTL.live, async () => {
     const body = await sportscore('/api/widget/matches/', { sport: 'football', limit: 50 });
-    return { matches: (body.matches || []).map(mapMatch).filter(Boolean) };
+    return { matches: (body.matches || []).map(m => mapMatch(m)).filter(Boolean) };
   });
 }
 
@@ -185,13 +220,15 @@ function getStandings(key) {
 
 function getScorers(key) {
   return cachedJSON(`scorers:${key}`, TTL.scorers, async () => {
-    const body = await sportscore('/api/widget/topscorers/', { sport: 'football', slug: LEAGUES[key].slug, stat: 'goals' });
+    const body = await sportscore('/api/widget/topscorers/', {
+      sport: 'football', slug: LEAGUES[key].slug, stat: 'goals',
+    });
     return { scorers: mapScorers(body) };
   });
 }
 
 function resolveLeague(v) {
-  if (!LEAGUES[v]) throw new HttpError(400, 'league doit être botola ou ligue1');
+  if (!LEAGUES[v]) throw new HttpError(400, `league doit être: ${Object.keys(LEAGUES).join(', ')}`);
   return v;
 }
 
@@ -200,8 +237,8 @@ async function route(url) {
   const path = url.pathname;
 
   if (path === '/api/matches') {
-    const date = url.searchParams.get('date') || casaToday();
     const today = casaToday();
+    const date = url.searchParams.get('date') || today;
     if (!isDate(date)) throw new HttpError(400, 'date invalide (YYYY-MM-DD)');
     if (date < addDays(today, -14) || date > addDays(today, 7)) throw new HttpError(400, 'date hors plage');
     const r = await getMatchesForDate(date);

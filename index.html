@@ -11,7 +11,6 @@
 </head>
 <body>
 
-    <!-- Header Navigation -->
     <header class="navbar">
         <div class="nav-container">
             <a href="#" class="logo"><i class="fa-solid fa-futbol"></i> GoalPulse</a>
@@ -27,14 +26,16 @@
     </header>
 
     <div class="main-layout">
-        
-        <!-- Left Sidebar: Championnats Filter -->
+
         <aside class="sidebar-left">
             <h3><i class="fa-solid fa-trophy"></i> Championnats</h3>
             <ul class="league-list" id="league-selector">
                 <li class="league-item active" data-league="all"><i class="fa-solid fa-globe"></i> Tous les Matchs</li>
                 <li class="league-item" data-league="botola">Botola Pro</li>
                 <li class="league-item" data-league="ligue1">Ligue 1</li>
+                <li class="league-item" data-league="bundesliga">Bundesliga</li>
+                <li class="league-item" data-league="laliga">La Liga</li>
+                <li class="league-item" data-league="seriea">Serie A</li>
             </ul>
 
             <div class="api-key-box">
@@ -43,15 +44,13 @@
             </div>
         </aside>
 
-        <!-- Center Content: Matches, Standings & News -->
         <main class="content-center">
-            
+
             <section id="matches" class="section-block">
                 <div class="section-header">
                     <h2><i class="fa-solid fa-bolt" style="color: #e11d48;"></i> Matchs en Direct & Calendrier</h2>
                 </div>
 
-                <!-- Date Filter Bar -->
                 <div class="date-filter-bar">
                     <button class="date-btn" id="btn-yesterday"><i class="fa-solid fa-chevron-left"></i> Hier</button>
                     <button class="date-btn active" id="btn-today"><i class="fa-solid fa-calendar-day"></i> Aujourd'hui</button>
@@ -61,23 +60,22 @@
                     <button class="tab-btn live-filter-btn" id="btn-live"><i class="fa-solid fa-circle-dot" style="color:#ef4444;"></i> Live Direct</button>
                 </div>
 
-                <div id="matches-container" class="matches-grid">
-                    <!-- Dynamic matches -->
-                </div>
+                <div id="matches-container" class="matches-grid"></div>
             </section>
 
-            <!-- Mid Content Ad Banner -->
             <div class="ad-banner-inline">
                 <span class="ad-placeholder">Espace Publicitaire Banner (728x90 / AdSense)</span>
             </div>
 
-            <!-- Standings Table (Classement) -->
             <section id="standings-sec" class="section-block">
                 <div class="section-header">
-                    <h2><i class="fa-solid fa-list-ol"></i> Classement des Championnats (Standings)</h2>
+                    <h2><i class="fa-solid fa-list-ol"></i> Classement des Championnats</h2>
                     <select id="standings-league-select" class="league-select-dropdown">
                         <option value="botola">Botola Pro (Maroc)</option>
                         <option value="ligue1">Ligue 1 (France)</option>
+                        <option value="bundesliga">Bundesliga (Allemagne)</option>
+                        <option value="laliga">La Liga (Espagne)</option>
+                        <option value="seriea">Serie A (Italie)</option>
                     </select>
                 </div>
 
@@ -96,24 +94,20 @@
                                 <th>Pts</th>
                             </tr>
                         </thead>
-                        <tbody id="standings-tbody">
-                            <!-- Dynamic Standings rows -->
-                        </tbody>
+                        <tbody id="standings-tbody"></tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- News placeholder: do not display fabricated timestamps or headlines -->
             <section id="news" class="section-block">
                 <div class="section-header">
                     <h2><i class="fa-regular fa-newspaper"></i> Actualités Football</h2>
                 </div>
-                <p class="data-message">Le flux d’actualités n’est pas encore connecté à une source vérifiée. Les titres fictifs ont été retirés pour éviter de présenter des informations non confirmées.</p>
+                <p class="data-message">Le flux d'actualités n'est pas encore connecté à une source vérifiée. Les titres fictifs ont été retirés pour éviter de présenter des informations non confirmées.</p>
             </section>
 
         </main>
 
-        <!-- Right Sidebar: Ads & Widgets -->
         <aside class="sidebar-right">
             <div class="ad-widget">
                 <span class="ad-placeholder-sidebar">Pub AdSense (300x250)</span>
