@@ -66,7 +66,7 @@ function normaliseMatch(raw) {
   const awayScore = m.away_score ?? m.score?.away ?? m.goals?.away ?? m.scores?.away;
   const status = m.status_text ?? m.status ?? m.fixture?.status?.short ?? 'Scheduled';
   const time = m.time ?? m.kickoff ?? m.date ?? m.fixture?.date;
-  const league = m.competition?.name ?? (typeof m.competition === 'string' ? m.competition : undefined) ?? m.competition_name ?? m.league?.name ?? (typeof m.league === 'string' ? m.league : undefined) ?? m.tournament?.name ?? (currentSelectedLeague !== 'all' ? (LEAGUE_NAMES[currentSelectedLeague] || '') : 'Football');
+  const league = m.competition?.name ?? (typeof m.competition === 'string' ? m.competition : undefined) ?? m.competition_name ?? m.league?.name ?? (typeof m.league === 'string' ? m.league : undefined) ?? m.tournament?.name ?? m.competition?.title ?? m.tournament_name ?? m.competitionTitle ?? 'Football';
   const leagueSlug = m.competition?.slug ?? m.competition_slug ?? m.league?.slug ?? '';
   const homeLogo = m.home_logo ?? m.teams?.home?.logo ?? m.homeTeam?.logo ?? '';
   const awayLogo = m.away_logo ?? m.teams?.away?.logo ?? m.awayTeam?.logo ?? '';
@@ -75,7 +75,7 @@ function normaliseMatch(raw) {
 
 function isLiveMatch(m) {
   const status = String(m.status || '').toLowerCase();
-  return status.includes('live') || status.includes('half') || status.includes('1h') || status.includes('2h') || status.includes('ht') || status.includes('in play');
+  return status.includes('live') || status.includes('half') || status.includes('1h') || status.includes('2h') || status === 'ht' || status.includes('in play') || status.includes('in_progress');
 }
 function formatTime(value) {
   if (!value) return '';
@@ -120,7 +120,7 @@ async function fetchMatchesFromAPI(dateStr = currentDateFilter, isLive = false, 
     } else {
       // Fetch the selected UTC date without a competition slug first. This
       // avoids an invalid/unsupported competition slug forcing an empty list.
-      payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date: dateStr, limit: 200, ...(leagueId !== 'all' ? { competition: LEAGUE_SLUGS[leagueId] } : {}) });
+      payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date: dateStr, limit: 200 });
     }
     let matches = extractMatchRows(payload);
     let normalised = matches.map(normaliseMatch);
@@ -242,7 +242,7 @@ async function fetchHistory() {
     for (const date of dates) {
       // Always query the date without a competition filter, then filter locally.
       // Some competition slugs are not recognized by the public API.
-      const payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date, limit: 200, ...(currentSelectedLeague !== 'all' ? { competition: LEAGUE_SLUGS[currentSelectedLeague] } : {}) });
+      const payload = await apiGet('/api/v1/fixtures/', { sport: SPORT, date, limit: 200 });
       const rows = extractMatchRows(payload);
       const normalised = rows.map(normaliseMatch);
       collected.push(...matchesSelectedLeague(normalised, currentSelectedLeague));
