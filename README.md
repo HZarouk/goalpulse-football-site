@@ -28,3 +28,8 @@ Le lien "Powered by SportScore" (dofollow) doit rester visible dans le footer.
 - Ajoutés: Premier League (`premier`), Champions League (`champions`).
 - Slugs SportScore à vérifier: `english-premier-league`, `uefa-champions-league` (worker.js, LEAGUES).
 - Section Actualités supprimée (front et endpoint /api/news).
+
+## SEO / Google Search Console
+- robots.txt et sitemap.xml ajoutés à la racine.
+- URL du site: https://hzarouk.github.io/goalpulse-football-site/ (à changer si domaine personnel).
+- Dans Google Search Console: ajouter la propriété, puis soumettre sitemap.xml.

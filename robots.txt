@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hzarouk.github.io/goalpulse-football-site/sitemap.xml
