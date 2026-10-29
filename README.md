@@ -27,4 +27,4 @@ Le lien "Powered by SportScore" (dofollow) doit rester visible dans le footer.
 ## Championnats
 - Ajoutés: Premier League (`premier`), Champions League (`champions`).
 - Slugs SportScore à vérifier: `english-premier-league`, `uefa-champions-league` (worker.js, LEAGUES).
-- Section Actualités supprimée du front (l'endpoint /api/news existe encore dans le worker, inutilisé).
+- Section Actualités supprimée (front et endpoint /api/news).
