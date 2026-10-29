@@ -17,7 +17,6 @@
             <nav class="nav-links">
                 <a href="#matches" class="active"><i class="fa-solid fa-calendar-days"></i> Matchs</a>
                 <a href="#standings-sec"><i class="fa-solid fa-trophy"></i> Classement</a>
-                <a href="#news"><i class="fa-regular fa-newspaper"></i> Actualités</a>
             </nav>
             <div class="ad-banner-header">
                 <span class="ad-placeholder">Espace Pub (AdSense / 728x90)</span>
@@ -31,6 +30,8 @@
             <h3><i class="fa-solid fa-trophy"></i> Championnats</h3>
             <ul class="league-list" id="league-selector">
                 <li class="league-item active" data-league="all"><i class="fa-solid fa-globe"></i> Tous les Matchs</li>
+                <li class="league-item" data-league="premier">Premier League</li>
+                <li class="league-item" data-league="champions">Champions League</li>
                 <li class="league-item" data-league="botola">Botola Pro</li>
                 <li class="league-item" data-league="ligue1">Ligue 1</li>
                 <li class="league-item" data-league="bundesliga">Bundesliga</li>
@@ -71,6 +72,8 @@
                 <div class="section-header">
                     <h2><i class="fa-solid fa-list-ol"></i> Classement des Championnats</h2>
                     <select id="standings-league-select" class="league-select-dropdown">
+                        <option value="premier">Premier League (Angleterre)</option>
+                        <option value="champions">Champions League (Europe)</option>
                         <option value="botola">Botola Pro (Maroc)</option>
                         <option value="ligue1">Ligue 1 (France)</option>
                         <option value="bundesliga">Bundesliga (Allemagne)</option>
@@ -96,15 +99,6 @@
                         </thead>
                         <tbody id="standings-tbody"></tbody>
                     </table>
-                </div>
-            </section>
-
-            <section id="news" class="section-block">
-                <div class="section-header">
-                    <h2><i class="fa-regular fa-newspaper"></i> Actualités Football</h2>
-                </div>
-                <div id="news-list" class="news-list">
-                    <p class="data-message">Chargement des actualités…</p>
                 </div>
             </section>
 

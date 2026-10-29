@@ -6,6 +6,8 @@ const LEAGUE_NAMES = {
   bundesliga: 'Bundesliga',
   laliga: 'La Liga',
   seriea: 'Serie A',
+  premier: 'Premier League',
+  champions: 'Champions League',
 };
 const LIVE_REFRESH_MS = 120000;
 const CLIENT_TIMEOUT_MS = 10000;
@@ -158,24 +160,6 @@ async function loadScorers() {
   }
 }
 
-async function loadNews() {
-  const box = $('news-list');
-  try {
-    const { items = [] } = await api('/api/news');
-    const fmt = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    box.innerHTML = items.length
-      ? items.map(n => `
-        <div class="news-item">
-          <a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>
-          <div class="news-meta">${esc(n.source || 'Source inconnue')}${n.date ? ' · ' + esc(fmt.format(new Date(n.date))) : ''}</div>
-        </div>`).join('')
-      : `<p class="data-message">Aucune actualité disponible.</p>`;
-  } catch (e) {
-    console.error(e);
-    box.innerHTML = `<p class="data-message">Actualités indisponibles pour le moment.</p>`;
-  }
-}
-
 // ---------- Mode & controls ----------
 function setActive(id) {
   document.querySelectorAll('.date-btn, .history-btn, .live-filter-btn')
@@ -233,7 +217,6 @@ function init() {
   setMode('day', state.date, 'btn-today');
   loadStandings();
   loadScorers();
-  loadNews();
 }
 
 document.addEventListener('DOMContentLoaded', init);
