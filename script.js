@@ -10,7 +10,7 @@ const LEAGUE_NAMES = {
   champions: 'Champions League',
 };
 const LIVE_REFRESH_MS = 120000;
-const CLIENT_TIMEOUT_MS = 10000;
+const CLIENT_TIMEOUT_MS = 30000;
 
 const state = { mode: 'day', date: '', league: 'all' };
 let liveTimer = null;
