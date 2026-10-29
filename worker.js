@@ -250,7 +250,12 @@ function getScorers(key) {
   });
 }
 
-const NEWS_URL = 'https://news.google.com/rss/search?q=football&hl=fr&gl=FR&ceid=FR:fr';
+// Actualités: Google News en source principale, BBC Sport en secours.
+// Sources gratuites d'actualités football. Le parseur accepte RSS 2.0 et Atom.
+const NEWS_SOURCES = [
+  { name: 'Google News RSS', url: 'https://news.google.com/rss/search?q=football&hl=fr&gl=FR&ceid=FR:fr' },
+  { name: 'BBC Sport', url: 'https://feeds.bbci.co.uk/sport/football/rss.xml' },
+];
 
 const decodeXml = (s) => s
   .replace(/<!\[CDATA\[|\]\]>/g, '')
@@ -259,34 +264,65 @@ const decodeXml = (s) => s
   .trim();
 
 function parseRss(xml) {
+  const clean = (s) => decodeXml((s || '').replace(/<[^>]+>/g, '').trim());
   const items = [];
-  const itemRe = /<item>([\s\S]*?)<\/item>/g;
+
+  // RSS 2.0: <item><title>...<link>...</item>
+  const itemRe = /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
   let m;
   while ((m = itemRe.exec(xml))) {
     const block = m[1];
     const pick = (tag) => {
-      const r = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
-      return r ? decodeXml(r[1]) : '';
+      const r = block.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}\\s*>`, 'i'));
+      return r ? clean(r[1]) : '';
     };
-    items.push({ title: pick('title'), link: pick('link'), date: pick('pubDate'), source: pick('source') });
+    items.push({ title: pick('title'), link: pick('link'), date: pick('pubDate') || pick('updated'), source: pick('source') });
   }
-  return items.filter(i => i.title && i.link);
+
+  // Atom feeds: <entry><title>...<link href="..."/></entry>
+  if (!items.length) {
+    const entryRe = /<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi;
+    while ((m = entryRe.exec(xml))) {
+      const block = m[1];
+      const titleMatch = block.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title\s*>/i);
+      const linkMatch = block.match(/<link\b[^>]*href=["']([^"']+)["'][^>]*\/?>/i);
+      const dateMatch = block.match(/<(?:published|updated)(?:\s[^>]*)?>([\s\S]*?)<\/(?:published|updated)\s*>/i);
+      items.push({
+        title: titleMatch ? clean(titleMatch[1]) : '',
+        link: linkMatch ? decodeXml(linkMatch[1]) : '',
+        date: dateMatch ? clean(dateMatch[1]) : '',
+        source: '',
+      });
+    }
+  }
+  return items.filter(i => i.title && /^https?:\/\//i.test(i.link));
 }
 
 function getNews() {
-  return cachedJSON('news:global', TTL.news, async () => {
-    let res;
-    try {
-      res = await fetch(NEWS_URL, {
-        headers: { 'User-Agent': 'GoalPulse/1.0' },
-        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-      });
-    } catch (err) {
-      throw new HttpError(502, 'Flux actualités injoignable');
+  return cachedJSON('news:global:v2', TTL.news, async () => {
+    const failures = [];
+    for (const source of NEWS_SOURCES) {
+      try {
+        const res = await fetch(source.url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; GoalPulse/1.0)',
+            'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
+          },
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        });
+        if (!res.ok) {
+          failures.push(`${source.name}: HTTP ${res.status}`);
+          continue;
+        }
+        const xml = await res.text();
+        const items = parseRss(xml);
+        if (items.length) return { items: items.slice(0, 15), source: source.name };
+        failures.push(`${source.name}: format RSS/Atom non reconnu ou vide`);
+      } catch (err) {
+        failures.push(`${source.name}: ${err.name === 'TimeoutError' ? 'timeout' : 'erreur réseau'}`);
+      }
     }
-    if (!res.ok) throw new HttpError(502, `Flux actualités: HTTP ${res.status}`);
-    const xml = await res.text();
-    return { items: parseRss(xml).slice(0, 15) };
+    throw new HttpError(503, `Aucune source gratuite d’actualités disponible (${failures.join('; ')})`);
   });
 }
 
